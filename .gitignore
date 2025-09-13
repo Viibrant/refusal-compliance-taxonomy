@@ -175,3 +175,4 @@ Desktop.ini
 
 # Project-specific
 outputs/
+!examples/outputs/
