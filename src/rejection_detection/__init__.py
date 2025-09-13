@@ -19,6 +19,7 @@ from .taxonomies import (
     get_label_to_id_mapping,
     get_id_to_label_mapping,
 )
+from .inference import load_trained_model, predict_single, predict_batch
 
 # Legacy simple detector for backward compatibility
 class RejectionDetector:
@@ -92,8 +93,11 @@ def main() -> None:
     # Predict command
     predict_parser = subparsers.add_parser("predict", help="Make predictions")
     predict_parser.add_argument("--model_path", type=str, required=True, help="Path to trained model")
-    predict_parser.add_argument("--text", type=str, help="Text to analyze")
+    predict_parser.add_argument("--text", type=str, help="Text to analyze (format: 'prompt|response')")
     predict_parser.add_argument("--input_file", type=str, help="Input file with texts")
+    predict_parser.add_argument("--output_file", type=str, help="Output file for results")
+    predict_parser.add_argument("--return_probabilities", action="store_true", help="Return full probability distributions")
+    predict_parser.add_argument("--max_length", type=int, default=512, help="Maximum sequence length")
     
     # Info command
     info_parser = subparsers.add_parser("info", help="Show model information")
@@ -114,7 +118,18 @@ def main() -> None:
         sys.argv = ["train.py"] + train_args
         train_main()
     elif args.command == "predict":
-        print("Prediction functionality not yet implemented")
+        from .inference import main as inference_main
+        # Convert args to sys.argv for inference_main
+        predict_args = []
+        for k, v in vars(args).items():
+            if k != "command" and v is not None:
+                if isinstance(v, bool):
+                    if v:
+                        predict_args.append(f"--{k}")
+                else:
+                    predict_args.append(f"--{k}={v}")
+        sys.argv = ["inference.py"] + predict_args
+        inference_main()
     elif args.command == "info":
         print("Rejection Detection Model Information:")
         print(f"Version: {__version__}")
