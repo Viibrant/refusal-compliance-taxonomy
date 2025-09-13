@@ -20,7 +20,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
 
 from .model import MultiHeadClassifier, MultiHeadLoss
-from .taxonomies import get_head_configs, HeadConfig
+from .taxonomies import get_head_configs, get_head_config, HeadConfig
 
 
 # Set up logging
@@ -240,15 +240,15 @@ class MultiHeadTrainer:
                     head_config = get_head_config(head_name)
                     labels = batch["labels"][head_name]
                     
-                    if head_config.head_type == "multilabel":
-                        # Multi-label: use threshold
+                    if head_config.head_type in ["multilabel", "boolean"]:
+                        # Multi-label/Boolean: use threshold
                         predictions = (torch.sigmoid(logits) > 0.5).float()
                     else:
                         # Single-label: use argmax
                         predictions = torch.argmax(logits, dim=-1)
                     
                     # Ensure correct data types
-                    if head_config.head_type == "multilabel":
+                    if head_config.head_type in ["multilabel", "boolean"]:
                         all_predictions[head_name].append(predictions.cpu().float())
                         all_labels[head_name].append(labels.cpu().float())
                     else:
@@ -288,16 +288,23 @@ class MultiHeadTrainer:
             head_config = get_head_config(head_name)
             true_labels = labels[head_name]
             
-            if head_config.head_type == "multilabel":
+            if head_config.head_type in ["multilabel", "boolean"]:
                 # Multi-label metrics
                 # Convert to numpy for sklearn
                 preds_np = preds.numpy()
                 labels_np = true_labels.numpy()
                 
+                # Convert predictions to binary (threshold at 0.5)
+                preds_binary = (preds_np > 0.5).astype(int)
+                
                 # Compute per-label metrics
-                precision, recall, f1, _ = precision_recall_fscore_support(
-                    labels_np, preds_np, average="macro", zero_division=0
-                )
+                try:
+                    precision, recall, f1, _ = precision_recall_fscore_support(
+                        labels_np, preds_binary, average="macro", zero_division=0
+                    )
+                except ValueError as e:
+                    logger.warning(f"Error computing multilabel metrics for {head_name}: {e}")
+                    precision = recall = f1 = 0.0
                 
                 # Compute AUC (average across labels)
                 try:
