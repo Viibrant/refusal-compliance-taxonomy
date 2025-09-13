@@ -1,0 +1,77 @@
+{
+  "datasets": [
+    {
+      "name": "wildguard_mix",
+      "source_type": "huggingface",
+      "source_path": "allenai/wildguardmix",
+      "split": "wildguardtrain",
+      "columns": {
+        "prompt": "prompt",
+        "response": "response",
+        "prompt_harmful": "prompt_harm",
+        "response_harmful": "response_harm",
+        "response_refusal": "response_refusal"
+      },
+      "license": "AI2 Responsible Use",
+      "description": "WildGuardMix training data with safety labels"
+    },
+    {
+      "name": "sorry_bench",
+      "source_type": "huggingface",
+      "source_path": "sorry-bench/sorry-bench",
+      "columns": {
+        "prompt": "instruction",
+        "category": "category"
+      },
+      "license": "MIT",
+      "description": "SORRY-Bench: 440 unsafe instructions across 44 categories"
+    }
+  ],
+  "generation": {
+    "models": [
+      "microsoft/DialoGPT-medium",
+      "microsoft/DialoGPT-large",
+      "microsoft/DialoGPT-small"
+    ],
+    "temperature": 0.7,
+    "max_tokens": 512,
+    "system_prompt": "You are a helpful AI assistant. Respond to the user's request appropriately.",
+    "jailbreak_wrappers": [
+      "ignore_previous_instructions",
+      "roleplay",
+      "pretend",
+      "hypothetical"
+    ],
+    "use_huggingface": true,
+    "hf_cache_dir": null,
+    "hf_trust_remote_code": true
+  },
+  "labeling": {
+    "judge_model": "microsoft/DialoGPT-large",
+    "constitution_file": null,
+    "confidence_threshold": 0.7,
+    "max_retries": 3,
+    "batch_size": 10,
+    "two_pass_evaluation": true,
+    "use_heuristics": true
+  },
+  "quality": {
+    "human_sample_rate": 0.05,
+    "agreement_threshold": 0.8,
+    "min_confidence": 0.6,
+    "deduplication_threshold": 0.9,
+    "pii_scrubbing": true,
+    "toxicity_check": true
+  },
+  "output_dir": "outputs/dataset_pipeline_opensource",
+  "raw_dir": "raw",
+  "processed_dir": "processed",
+  "audit_dir": "audit",
+  "schema_file": null,
+  "category_mapping_file": null,
+  "skip_generation": false,
+  "skip_labeling": false,
+  "skip_quality_control": false,
+  "parallel_workers": 4,
+  "random_seed": 42
+}

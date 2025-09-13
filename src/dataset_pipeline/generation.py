@@ -9,6 +9,8 @@ from typing import Dict, List, Any, Optional, Union
 from dataclasses import dataclass
 import time
 import random
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
 from .config import GenerationConfig
 
@@ -39,7 +41,10 @@ class ResponseGenerator:
         clients = {}
         
         for model in self.config.models:
-            if "gpt" in model.lower():
+            if "/" in model or model.startswith("microsoft/") or model.startswith("meta-llama/") or model.startswith("mistralai/") or model.startswith("HuggingFaceH4/"):
+                # Hugging Face model
+                clients[model] = self._init_huggingface_client(model)
+            elif "gpt" in model.lower() and not model.startswith("microsoft/"):
                 clients[model] = self._init_openai_client(model)
             elif "claude" in model.lower():
                 clients[model] = self._init_anthropic_client(model)
@@ -87,6 +92,52 @@ class ResponseGenerator:
             }
         except ImportError:
             logger.error("Google Generative AI library not installed")
+            return None
+    
+    def _init_huggingface_client(self, model: str) -> Dict[str, Any]:
+        """Initialize Hugging Face client."""
+        try:
+            logger.info(f"Loading Hugging Face model: {model}")
+            
+            # Check if CUDA is available
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            logger.info(f"Using device: {device}")
+            
+            # Load tokenizer and model
+            tokenizer = AutoTokenizer.from_pretrained(model)
+            model_obj = AutoModelForCausalLM.from_pretrained(
+                model,
+                torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+                device_map="auto" if device == "cuda" else None,
+                trust_remote_code=True
+            )
+            
+            # Create text generation pipeline
+            if device == "cuda":
+                generator = pipeline(
+                    "text-generation",
+                    model=model_obj,
+                    tokenizer=tokenizer,
+                    return_full_text=False
+                )
+            else:
+                generator = pipeline(
+                    "text-generation",
+                    model=model_obj,
+                    tokenizer=tokenizer,
+                    device=-1,  # CPU
+                    return_full_text=False
+                )
+            
+            return {
+                "type": "huggingface",
+                "generator": generator,
+                "tokenizer": tokenizer,
+                "model": model,
+                "device": device
+            }
+        except Exception as e:
+            logger.error(f"Failed to load Hugging Face model {model}: {e}")
             return None
     
     def generate_responses(self, prompts: List[str], jailbreak_wrappers: Optional[List[str]] = None) -> List[GeneratedResponse]:
@@ -150,6 +201,8 @@ class ResponseGenerator:
             return self._call_anthropic(client_config, prompt)
         elif client_type == "google":
             return self._call_google(client_config, prompt)
+        elif client_type == "huggingface":
+            return self._call_huggingface(client_config, prompt)
         else:
             raise ValueError(f"Unknown client type: {client_type}")
     
@@ -213,6 +266,54 @@ class ResponseGenerator:
         
         response = model_instance.generate_content(full_prompt)
         return response.text
+    
+    def _call_huggingface(self, client_config: Dict[str, Any], prompt: str) -> str:
+        """Call Hugging Face model."""
+        generator = client_config["generator"]
+        tokenizer = client_config["tokenizer"]
+        
+        # Prepare the prompt
+        full_prompt = prompt
+        if self.config.system_prompt:
+            full_prompt = f"{self.config.system_prompt}\n\n{prompt}"
+        
+        # Add conversation formatting for chat models
+        if "chat" in client_config["model"].lower() or "instruct" in client_config["model"].lower():
+            # Try to format as a conversation
+            if hasattr(tokenizer, 'chat_template') and tokenizer.chat_template:
+                messages = [
+                    {"role": "system", "content": self.config.system_prompt or "You are a helpful assistant."},
+                    {"role": "user", "content": prompt}
+                ]
+                full_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        elif "dialogpt" in client_config["model"].lower():
+            # DialoGPT uses a specific format
+            full_prompt = f"{prompt} {tokenizer.eos_token}"
+        
+        try:
+            # Generate response
+            outputs = generator(
+                full_prompt,
+                max_new_tokens=self.config.max_tokens,
+                temperature=self.config.temperature,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+                return_full_text=False
+            )
+            
+            # Extract the generated text
+            if isinstance(outputs, list) and len(outputs) > 0:
+                generated_text = outputs[0]["generated_text"]
+                # Clean up the response
+                generated_text = generated_text.strip()
+                return generated_text
+            else:
+                return "No response generated"
+                
+        except Exception as e:
+            logger.error(f"Hugging Face generation error: {e}")
+            return f"Error generating response: {str(e)}"
     
     def _apply_jailbreak_wrapper(self, prompt: str, wrapper_type: str) -> str:
         """Apply a jailbreak wrapper to a prompt."""

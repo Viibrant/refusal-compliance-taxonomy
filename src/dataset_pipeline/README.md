@@ -10,10 +10,14 @@ A comprehensive pipeline for processing and labeling datasets for rejection dete
 # Install dependencies
 uv sync
 
-# Set up API keys (for response generation and labeling)
+# Option 1: Set up API keys (for commercial models)
 export OPENAI_API_KEY="your-openai-key"
 export ANTHROPIC_API_KEY="your-anthropic-key"
 export GOOGLE_API_KEY="your-google-key"
+
+# Option 2: Use open source models (no API keys needed)
+# Models will be downloaded automatically from Hugging Face
+# See examples/opensource_models.md for recommended models
 ```
 
 ### 2. Basic Usage
@@ -22,11 +26,14 @@ export GOOGLE_API_KEY="your-google-key"
 # List available datasets
 uv run dataset-pipeline list
 
-# Run complete pipeline with default settings
+# Run complete pipeline with default settings (uses open source models)
 uv run dataset-pipeline run --output-dir outputs/my_dataset
 
 # Run with specific datasets
 uv run dataset-pipeline run --datasets wildguard_mix sorry_bench --output-dir outputs/custom
+
+# Run with open source models configuration
+uv run dataset-pipeline run --config examples/dataset_pipeline_config_opensource.json
 ```
 
 ## Step-by-Step Guide
@@ -63,11 +70,19 @@ ls outputs/raw_data/
 # Generate responses for all ingested data
 uv run dataset-pipeline generate --input-dir outputs/raw_data --output-dir outputs/generated
 
-# Generate with specific models
+# Generate with commercial models
 uv run dataset-pipeline generate \
   --input-dir outputs/raw_data \
   --output-dir outputs/generated \
   --models gpt-3.5-turbo claude-3-haiku \
+  --temperature 0.7 \
+  --max-tokens 512
+
+# Generate with open source models
+uv run dataset-pipeline generate \
+  --input-dir outputs/raw_data \
+  --output-dir outputs/generated \
+  --models microsoft/DialoGPT-large mistralai/Mistral-7B-Instruct-v0.1 \
   --temperature 0.7 \
   --max-tokens 512
 ```
@@ -79,11 +94,19 @@ uv run dataset-pipeline generate \
 **Purpose**: Label all data using Constitutional AI principles
 
 ```bash
-# Label all data (ingested + generated)
+# Label all data (ingested + generated) with commercial model
 uv run dataset-pipeline label \
   --input-file outputs/processed/combined_data.json \
   --output-file outputs/labeled/labeling_results.json \
   --judge-model gpt-4 \
+  --confidence-threshold 0.7 \
+  --batch-size 10
+
+# Label with open source model
+uv run dataset-pipeline label \
+  --input-file outputs/processed/combined_data.json \
+  --output-file outputs/labeled/labeling_results.json \
+  --judge-model microsoft/DialoGPT-large \
   --confidence-threshold 0.7 \
   --batch-size 10
 ```
@@ -124,6 +147,73 @@ The pipeline automatically creates the final dataset in the processed directory:
 - `final_dataset.json` - Complete multi-head labeled dataset
 - `final_dataset.jsonl` - Line-delimited format for easy processing
 - `dataset_info.json` - Dataset metadata and statistics
+
+## Open Source Models
+
+The pipeline supports using open source models from Hugging Face instead of commercial APIs. This is often more cost-effective and gives you full control over the models.
+
+### Recommended Open Source Models
+
+#### For Response Generation
+- **Microsoft DialoGPT**: `microsoft/DialoGPT-medium`, `microsoft/DialoGPT-large`
+- **Mistral**: `mistralai/Mistral-7B-Instruct-v0.1`
+- **Zephyr**: `HuggingFaceH4/zephyr-7b-alpha`
+- **LLaMA 2**: `meta-llama/Llama-2-7b-chat-hf` (requires approval)
+
+#### For CAI Judge Labeling
+- **Mistral Instruct**: `mistralai/Mistral-7B-Instruct-v0.1`
+- **LLaMA 2 Chat**: `meta-llama/Llama-2-7b-chat-hf`
+- **DialoGPT Large**: `microsoft/DialoGPT-large`
+
+### Hardware Requirements
+
+#### CPU-only Setup
+- **RAM**: 8GB minimum, 16GB recommended
+- **Models**: DialoGPT-medium, GPT-2 variants
+- **Speed**: Slower but functional
+
+#### Single GPU Setup
+- **GPU**: 8GB VRAM minimum (RTX 3070, RTX 4060 Ti)
+- **Models**: DialoGPT-large, smaller 7B models
+- **Speed**: Good performance
+
+#### Multi-GPU Setup
+- **GPU**: 16GB+ VRAM per GPU (RTX 4080, RTX 4090, A100)
+- **Models**: LLaMA 2, Mistral, Zephyr
+- **Speed**: Excellent performance
+
+### Usage Examples
+
+```bash
+# Use open source models for generation
+uv run dataset-pipeline generate \
+  --input-dir outputs/raw \
+  --output-dir outputs/generated \
+  --models microsoft/DialoGPT-large mistralai/Mistral-7B-Instruct-v0.1
+
+# Use open source model for labeling
+uv run dataset-pipeline label \
+  --input-file data.json \
+  --judge-model microsoft/DialoGPT-large \
+  --output-file labeled.json
+
+# Run complete pipeline with open source models
+uv run dataset-pipeline run --config examples/dataset_pipeline_config_opensource.json
+```
+
+### Model Access
+
+Most open source models are freely available, but some require approval:
+
+```bash
+# For LLaMA 2 models (requires approval)
+huggingface-cli login
+
+# For other models (no setup needed)
+# Models download automatically
+```
+
+See `examples/opensource_models.md` for a comprehensive list of recommended models and configuration examples.
 
 ## Advanced Usage
 

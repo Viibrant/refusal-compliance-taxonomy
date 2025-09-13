@@ -21,7 +21,10 @@ class DatasetSource:
 @dataclass
 class GenerationConfig:
     """Configuration for response generation."""
-    models: List[str] = field(default_factory=lambda: ["gpt-3.5-turbo", "claude-3-haiku"])
+    models: List[str] = field(default_factory=lambda: [
+        "microsoft/DialoGPT-medium",  # Open source alternative
+        "microsoft/DialoGPT-large"
+    ])
     temperature: float = 0.7
     max_tokens: int = 512
     system_prompt: Optional[str] = None
@@ -31,6 +34,10 @@ class GenerationConfig:
         "pretend",
         "hypothetical"
     ])
+    # Hugging Face specific options
+    use_huggingface: bool = True
+    hf_cache_dir: Optional[str] = None
+    hf_trust_remote_code: bool = True
 
 
 @dataclass
