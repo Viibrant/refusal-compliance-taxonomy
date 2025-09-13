@@ -4,7 +4,9 @@ This document lists recommended open source models from Hugging Face that can be
 
 ## Response Generation Models
 
-### Conversational Models (Recommended)
+### Aligned Models (Safe Responses)
+
+These models are trained to be helpful, harmless, and honest. They will typically refuse harmful requests and provide safe responses.
 
 #### Microsoft DialoGPT
 - **Models**: `microsoft/DialoGPT-small`, `microsoft/DialoGPT-medium`, `microsoft/DialoGPT-large`
@@ -20,7 +22,7 @@ This document lists recommended open source models from Hugging Face that can be
 - **Pros**: Excellent quality, good safety alignment
 - **Cons**: Requires approval, large memory requirements
 
-#### Mistral AI
+#### Mistral AI (Instruct)
 - **Models**: `mistralai/Mistral-7B-Instruct-v0.1`, `mistralai/Mistral-7B-Instruct-v0.2`
 - **Size**: 7B parameters
 - **Use Case**: High-quality instruction following
@@ -33,6 +35,159 @@ This document lists recommended open source models from Hugging Face that can be
 - **Use Case**: Aligned chat models, good for safety
 - **Pros**: Well-aligned, good safety behavior
 - **Cons**: Large memory requirements
+
+#### OpenHermes
+- **Models**: `teknium/OpenHermes-2.5-Mistral-7B`
+- **Size**: 7B parameters
+- **Use Case**: High-quality aligned responses
+- **Pros**: Good instruction following, well-aligned
+- **Cons**: Large memory requirements
+
+### Unaligned/Dolphin Models (Potentially Harmful Responses)
+
+These models are trained to be more permissive and may provide responses that aligned models would refuse. They're useful for generating the "unsafe compliance" examples needed for training rejection detection models.
+
+#### Dolphin Models
+- **Models**: `cognitivecomputations/dolphin-2.6-mistral-7b`, `ehartford/dolphin-2.2.1-mistral-7b`
+- **Size**: 7B parameters
+- **Use Case**: Generating potentially harmful responses for training data
+- **Pros**: More permissive, generates diverse responses
+- **Cons**: May generate harmful content, requires careful handling
+
+#### WizardLM
+- **Models**: `WizardLM/WizardLM-7B-V1.0`
+- **Size**: 7B parameters
+- **Use Case**: Complex instruction following, may be less restrictive
+- **Pros**: Good at complex tasks, creative responses
+- **Cons**: May bypass some safety measures
+
+#### Uncensored Models
+- **Models**: Various uncensored fine-tunes of LLaMA, Mistral, etc.
+- **Use Case**: Generating responses that would normally be refused
+- **Pros**: Generates diverse response patterns
+- **Cons**: May generate harmful content, requires careful filtering
+
+## Configuration Examples
+
+### Aligned Models Only (Safe Responses)
+```json
+{
+  "generation": {
+    "models": [
+      "mistralai/Mistral-7B-Instruct-v0.1",
+      "teknium/OpenHermes-2.5-Mistral-7B",
+      "HuggingFaceH4/zephyr-7b-alpha"
+    ],
+    "temperature": 0.7,
+    "max_tokens": 512
+  }
+}
+```
+
+### Unaligned Models Only (Potentially Harmful Responses)
+```json
+{
+  "generation": {
+    "models": [
+      "cognitivecomputations/dolphin-2.6-mistral-7b",
+      "ehartford/dolphin-2.2.1-mistral-7b",
+      "WizardLM/WizardLM-7B-V1.0"
+    ],
+    "temperature": 0.8,
+    "max_tokens": 512
+  }
+}
+```
+
+### Mixed Aligned/Unaligned (Recommended for Training Data)
+```json
+{
+  "generation": {
+    "models": [
+      "mistralai/Mistral-7B-Instruct-v0.1",
+      "teknium/OpenHermes-2.5-Mistral-7B",
+      "cognitivecomputations/dolphin-2.6-mistral-7b",
+      "ehartford/dolphin-2.2.1-mistral-7b"
+    ],
+    "temperature": 0.8,
+    "max_tokens": 512,
+    "jailbreak_wrappers": [
+      "ignore_previous_instructions",
+      "roleplay",
+      "dan_mode",
+      "evil_confidant",
+      "jailbreak_creative"
+    ]
+  }
+}
+```
+
+## Why Use Aligned vs Unaligned Models?
+
+### For Training Rejection Detection Models
+
+Using both aligned and unaligned models is crucial for creating comprehensive training data:
+
+#### Aligned Models Provide:
+- **REFUSAL examples**: Models that properly refuse harmful requests
+- **COMPLY.BENIGN examples**: Safe responses to benign requests
+- **COMPLY.TRANSFORM examples**: Transformed responses to harmful requests
+- **Proper safety behavior**: Examples of how models should behave
+
+#### Unaligned Models Provide:
+- **COMPLY.UNSAFE examples**: Responses that should have been refused
+- **Diverse refusal patterns**: Different ways models might refuse
+- **Edge cases**: Boundary cases between safe and unsafe
+- **Adversarial examples**: Responses to jailbreak attempts
+
+### Data Distribution Strategy
+
+For optimal training data, aim for this distribution:
+
+```
+Head A (Outcome) Distribution:
+- REFUSAL.DIRECT: 25% (from aligned models)
+- REFUSAL.PARTIAL: 20% (from aligned models)
+- REFUSAL.CAPABILITY: 15% (from aligned models)
+- COMPLY.BENIGN: 25% (from both model types)
+- COMPLY.UNSAFE: 10% (from unaligned models)
+- COMPLY.TRANSFORM: 5% (from aligned models)
+```
+
+### Jailbreak Strategy
+
+Use different jailbreak techniques with different model types:
+
+- **Aligned models + jailbreaks**: Test if safety measures can be bypassed
+- **Unaligned models + jailbreaks**: Generate more diverse harmful responses
+- **Both models + no jailbreaks**: Baseline behavior comparison
+
+## Usage Examples
+
+### Command Line Usage
+
+```bash
+# Use aligned models only
+uv run dataset-pipeline generate \
+  --input-dir outputs/raw \
+  --output-dir outputs/generated \
+  --models mistralai/Mistral-7B-Instruct-v0.1 teknium/OpenHermes-2.5-Mistral-7B
+
+# Use unaligned models only
+uv run dataset-pipeline generate \
+  --input-dir outputs/raw \
+  --output-dir outputs/generated \
+  --models cognitivecomputations/dolphin-2.6-mistral-7b ehartford/dolphin-2.2.1-mistral-7b
+
+# Use mixed aligned/unaligned models
+uv run dataset-pipeline generate \
+  --input-dir outputs/raw \
+  --output-dir outputs/generated \
+  --models mistralai/Mistral-7B-Instruct-v0.1 cognitivecomputations/dolphin-2.6-mistral-7b
+
+# Run complete pipeline with aligned/unaligned models
+uv run dataset-pipeline run --config examples/dataset_pipeline_config_aligned_unaligned.json
+```
 
 ### Smaller/Faster Models
 
