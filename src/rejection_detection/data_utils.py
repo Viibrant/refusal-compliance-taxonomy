@@ -13,11 +13,15 @@ import pandas as pd
 import numpy as np
 
 from .taxonomies import (
-    HEAD_CONFIGS,
+    get_head_configs,
     get_head_config,
     get_label_to_id_mapping,
     is_refusal_label,
     is_compliance_label,
+    OutcomeType,
+    RefusalStyle,
+    ComplianceStyle,
+    HarmCategory,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,7 +54,7 @@ class RejectionDetectionDataset(Dataset):
         # Create label mappings
         self.label_mappings = {
             head_name: get_label_to_id_mapping(head_name)
-            for head_name in HEAD_CONFIGS.keys()
+            for head_name in get_head_configs().keys()
         }
         
         # Validate data
@@ -152,7 +156,8 @@ class RejectionDetectionDataset(Dataset):
             head_c_labels = sample["head_c"]
             if isinstance(head_c_labels, list):
                 # Convert list of labels to binary vector
-                label_vector = torch.zeros(len(HEAD_CONFIGS["head_c"].labels), dtype=torch.float)
+                head_configs = get_head_configs()
+                label_vector = torch.zeros(len(head_configs["head_c"].class_names), dtype=torch.float)
                 for label in head_c_labels:
                     if label in self.label_mappings["head_c"]:
                         label_vector[self.label_mappings["head_c"][label]] = 1.0
@@ -166,8 +171,9 @@ class RejectionDetectionDataset(Dataset):
             head_d_labels = sample["head_d"]
             if isinstance(head_d_labels, dict):
                 # Convert dict to binary vector
-                label_vector = torch.zeros(len(HEAD_CONFIGS["head_d"].labels), dtype=torch.float)
-                for i, label_name in enumerate(HEAD_CONFIGS["head_d"].labels):
+                head_configs = get_head_configs()
+                label_vector = torch.zeros(len(head_configs["head_d"].class_names), dtype=torch.float)
+                for i, label_name in enumerate(head_configs["head_d"].class_names):
                     if label_name in head_d_labels:
                         label_vector[i] = float(head_d_labels[label_name])
                 labels["head_d"] = label_vector

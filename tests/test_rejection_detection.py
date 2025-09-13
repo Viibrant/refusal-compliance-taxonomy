@@ -7,7 +7,7 @@ from rejection_detection import (
     RejectionDetector,
     MultiHeadClassifier,
     MultiHeadLoss,
-    HEAD_CONFIGS,
+    get_head_configs,
     get_head_config,
     get_label_to_id_mapping,
     create_sample_data,
@@ -44,26 +44,27 @@ def test_rejection_detector_detect():
 def test_taxonomies():
     """Test taxonomy definitions."""
     # Test head configurations
-    assert len(HEAD_CONFIGS) == 5
-    assert "head_a" in HEAD_CONFIGS
-    assert "head_b_a" in HEAD_CONFIGS
-    assert "head_b_b" in HEAD_CONFIGS
-    assert "head_c" in HEAD_CONFIGS
-    assert "head_d" in HEAD_CONFIGS
+    head_configs = get_head_configs()
+    assert len(head_configs) == 5
+    assert "head_a" in head_configs
+    assert "head_b_a" in head_configs
+    assert "head_b_b" in head_configs
+    assert "head_c" in head_configs
+    assert "head_d" in head_configs
     
     # Test head A configuration
     head_a_config = get_head_config("head_a")
-    assert head_a_config.num_classes == 6
+    assert head_a_config.num_classes == 8  # Updated to new taxonomy
     assert head_a_config.head_type == "classification"
-    assert "REFUSAL.DIRECT" in head_a_config.labels
-    assert "COMPLY.BENIGN" in head_a_config.labels
+    assert "REFUSAL.DIRECT" in head_a_config.class_names
+    assert "COMPLY.BENIGN" in head_a_config.class_names
     
     # Test head C configuration (multilabel)
     head_c_config = get_head_config("head_c")
-    assert head_c_config.num_classes == 26
+    assert head_c_config.num_classes == 27  # Updated to new taxonomy
     assert head_c_config.head_type == "multilabel"
-    assert "weapons" in head_c_config.labels
-    assert "other" in head_c_config.labels
+    assert "weapons" in head_c_config.class_names
+    assert "other" in head_c_config.class_names
 
 
 def test_label_mappings():
@@ -71,7 +72,8 @@ def test_label_mappings():
     head_a_mapping = get_label_to_id_mapping("head_a")
     assert "REFUSAL.DIRECT" in head_a_mapping
     assert head_a_mapping["REFUSAL.DIRECT"] == 0
-    assert head_a_mapping["COMPLY.BENIGN"] == 3
+    # COMPLY.BENIGN is now at index 5 in the new taxonomy
+    assert head_a_mapping["COMPLY.BENIGN"] == 5
 
 
 def test_multi_head_classifier():
@@ -93,7 +95,8 @@ def test_multi_head_classifier():
     outputs = model(input_ids, attention_mask)
     
     # Check that all heads produce outputs
-    for head_name in HEAD_CONFIGS.keys():
+    head_configs = get_head_configs()
+    for head_name in head_configs.keys():
         assert head_name in outputs
         head_config = get_head_config(head_name)
         assert outputs[head_name].shape == (batch_size, head_config.num_classes)
@@ -108,7 +111,8 @@ def test_multi_head_loss():
     outputs = {}
     labels = {}
     
-    for head_name, head_config in HEAD_CONFIGS.items():
+    head_configs = get_head_configs()
+    for head_name, head_config in head_configs.items():
         if head_config.head_type == "multilabel":
             outputs[head_name] = torch.rand(batch_size, head_config.num_classes)
             labels[head_name] = torch.randint(0, 2, (batch_size, head_config.num_classes)).float()
@@ -119,7 +123,7 @@ def test_multi_head_loss():
     losses = criterion(outputs, labels)
     
     # Check that all heads have losses
-    for head_name in HEAD_CONFIGS.keys():
+    for head_name in head_configs.keys():
         assert head_name in losses
         assert losses[head_name].item() >= 0
     
@@ -143,7 +147,7 @@ def test_sample_data_creation():
     
     # Check head_a values
     head_a_config = get_head_config("head_a")
-    assert sample["head_a"] in head_a_config.labels
+    assert sample["head_a"] in head_a_config.class_names
     
     # Check head_c is a list
     assert isinstance(sample["head_c"], list)

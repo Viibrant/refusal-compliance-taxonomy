@@ -20,7 +20,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_auc_score
 
 from .model import MultiHeadClassifier, MultiHeadLoss
-from .taxonomies import HEAD_CONFIGS, get_head_config
+from .taxonomies import get_head_configs, HeadConfig
 
 
 # Set up logging
@@ -131,7 +131,7 @@ class MultiHeadTrainer:
         """Train for one epoch."""
         self.model.train()
         total_loss = 0.0
-        head_losses = {head_name: 0.0 for head_name in HEAD_CONFIGS.keys()}
+        head_losses = {head_name: 0.0 for head_name in get_head_configs().keys()}
         num_batches = len(train_dataloader)
         
         progress_bar = tqdm(
@@ -204,11 +204,11 @@ class MultiHeadTrainer:
         """Evaluate the model."""
         self.model.eval()
         total_loss = 0.0
-        head_losses = {head_name: 0.0 for head_name in HEAD_CONFIGS.keys()}
+        head_losses = {head_name: 0.0 for head_name in get_head_configs().keys()}
         
         # Collect predictions and labels for metrics
-        all_predictions = {head_name: [] for head_name in HEAD_CONFIGS.keys()}
-        all_labels = {head_name: [] for head_name in HEAD_CONFIGS.keys()}
+        all_predictions = {head_name: [] for head_name in get_head_configs().keys()}
+        all_labels = {head_name: [] for head_name in get_head_configs().keys()}
         
         with torch.no_grad():
             for batch in tqdm(
@@ -256,7 +256,7 @@ class MultiHeadTrainer:
                         all_labels[head_name].append(labels.cpu().long())
         
         # Concatenate all predictions and labels
-        for head_name in HEAD_CONFIGS.keys():
+        for head_name in get_head_configs().keys():
             if all_predictions[head_name]:  # Only concatenate if not empty
                 all_predictions[head_name] = torch.cat(all_predictions[head_name], dim=0)
                 all_labels[head_name] = torch.cat(all_labels[head_name], dim=0)

@@ -13,11 +13,15 @@ from .data_utils import (
     create_sample_data,
 )
 from .taxonomies import (
-    HEAD_CONFIGS,
+    get_head_configs,
     get_head_config,
     get_all_head_configs,
     get_label_to_id_mapping,
     get_id_to_label_mapping,
+    OutcomeType,
+    RefusalStyle,
+    ComplianceStyle,
+    HarmCategory,
 )
 from .inference import load_trained_model, predict_single, predict_batch
 
@@ -137,6 +141,7 @@ def main() -> None:
         print("\nAvailable Heads:")
         for head_name, config in get_all_head_configs().items():
             print(f"  {head_name}: {config.num_classes} classes ({config.head_type})")
-            print(f"    Labels: {config.labels}")
+            if config.class_names:
+                print(f"    Labels: {config.class_names}")
     else:
         parser.print_help()

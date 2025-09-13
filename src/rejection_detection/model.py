@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from typing import Dict, List, Optional, Tuple, Any
 from transformers import AutoModel, AutoConfig, AutoTokenizer
-from .taxonomies import HEAD_CONFIGS, get_head_config
+from .taxonomies import get_head_configs, get_head_config
 
 
 class MultiHeadClassifier(nn.Module):
@@ -61,7 +61,7 @@ class MultiHeadClassifier(nn.Module):
         
     def _initialize_heads(self):
         """Initialize all classification heads."""
-        for head_name, head_config in HEAD_CONFIGS.items():
+        for head_name, head_config in get_head_configs().items():
             self.heads[head_name] = self._create_head(
                 head_config.num_classes,
                 head_config.head_type
