@@ -1,5 +1,5 @@
 """
-Comprehensive taxonomy for rejection detection model.
+Comprehensive taxonomy for rejection detection model. f
 
 This module defines the multi-head classification taxonomy for detecting and categorizing
 AI model responses, particularly focusing on refusal patterns, compliance styles, and safety.
