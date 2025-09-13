@@ -25,7 +25,7 @@ class MultiHeadClassifier(nn.Module):
             model_name: Name of the pre-trained model to use
             hidden_dropout_prob: Dropout probability for hidden layers
             head_dropout_prob: Dropout probability for classification heads
-            freeze_encoder: Whether to freeze the encoder weights
+            freeze_encoder: Whether to freeze most encoder weights (keeps last layer trainable)
             head_hidden_size: Hidden size for classification heads (defaults to encoder hidden size)
         """
         super().__init__()
@@ -38,8 +38,16 @@ class MultiHeadClassifier(nn.Module):
         self.encoder = AutoModel.from_pretrained(model_name)
         
         if freeze_encoder:
-            for param in self.encoder.parameters():
+            # Freeze all layers except the last one
+            for layer in self.encoder.encoder.layer[:-1]:
+                for param in layer.parameters():
+                    param.requires_grad = False
+            # Also freeze embeddings and pooler
+            for param in self.encoder.embeddings.parameters():
                 param.requires_grad = False
+            for param in self.encoder.pooler.parameters():
+                param.requires_grad = False
+            # Last encoder layer remains trainable
         
         # Set hidden size for heads
         self.hidden_size = self.config.hidden_size

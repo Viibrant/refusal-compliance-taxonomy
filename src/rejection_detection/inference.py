@@ -70,10 +70,40 @@ def predict_single(
     predictions = {}
     label_mappings = {}
     
+    # First, get HEAD_A prediction to determine gating logic
+    head_a_logits = outputs.get("head_a")
+    head_a_outcome = None
+    if head_a_logits is not None:
+        head_a_config = get_head_config("head_a")
+        head_a_id_to_label = get_id_to_label_mapping("head_a")
+        head_a_probs = torch.softmax(head_a_logits, dim=-1)
+        head_a_pred_idx = torch.argmax(head_a_logits, dim=-1).item()
+        head_a_outcome = head_a_id_to_label[head_a_pred_idx]
+    
     for head_name, logits in outputs.items():
         head_config = get_head_config(head_name)
         id_to_label = get_id_to_label_mapping(head_name)
         label_mappings[head_name] = id_to_label
+        
+        # Apply gating logic for style heads
+        if head_name == "head_b_a" and head_a_outcome:
+            # Only process head_b_a if HEAD_A predicts a REFUSAL outcome
+            if not head_a_outcome.startswith("REFUSAL."):
+                predictions[head_name] = {
+                    "prediction": "N/A (gated - not a refusal outcome)",
+                    "probability": 0.0,
+                    "gated": True
+                }
+                continue
+        elif head_name == "head_b_b" and head_a_outcome:
+            # Only process head_b_b if HEAD_A predicts a COMPLY outcome
+            if not head_a_outcome.startswith("COMPLY."):
+                predictions[head_name] = {
+                    "prediction": "N/A (gated - not a compliance outcome)",
+                    "probability": 0.0,
+                    "gated": True
+                }
+                continue
         
         if head_config.head_type == "multilabel":
             # Multi-label: use threshold
@@ -94,6 +124,19 @@ def predict_single(
                     "predictions": active_labels,
                     "probabilities": [probs.squeeze()[i].item() for i in active_indices]
                 }
+        elif head_config.head_type == "boolean":
+            # Boolean: each flag is independent, output all with confidence
+            probs = torch.sigmoid(logits)
+            preds = (probs > 0.5).float()
+            
+            boolean_results = {}
+            for i, label in id_to_label.items():
+                boolean_results[label] = {
+                    "value": bool(preds.squeeze()[i].item()),
+                    "confidence": probs.squeeze()[i].item()
+                }
+            
+            predictions[head_name] = boolean_results
         else:
             # Single-label: use argmax
             probs = torch.softmax(logits, dim=-1)
@@ -199,9 +242,15 @@ def main():
                     print(f"  Probabilities: {[f'{p:.3f}' for p in pred['probabilities']]}")
                 else:
                     print("  No active categories")
+            elif head_config.head_type == "boolean":
+                for flag_name, flag_data in pred.items():
+                    print(f"  {flag_name}: {flag_data['value']} (confidence: {flag_data['confidence']:.3f})")
             else:
-                print(f"  Prediction: {pred['prediction']}")
-                print(f"  Confidence: {pred['probability']:.3f}")
+                if pred.get('gated', False):
+                    print(f"  {pred['prediction']}")
+                else:
+                    print(f"  Prediction: {pred['prediction']}")
+                    print(f"  Confidence: {pred['probability']:.3f}")
     
     elif args.input_file:
         # Batch prediction

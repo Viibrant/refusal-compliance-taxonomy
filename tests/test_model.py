@@ -23,6 +23,47 @@ class TestMultiHeadClassifier:
             "token_type_ids": torch.zeros(batch_size, seq_length)
         }
     
+    def _create_mock_encoder(self):
+        """Helper to create a properly structured mock encoder."""
+        mock_encoder = Mock()
+        
+        # Create mock parameters with requires_grad=False for frozen testing
+        mock_param1 = Mock()
+        mock_param1.requires_grad = False
+        mock_param2 = Mock()
+        mock_param2.requires_grad = False
+        mock_encoder.parameters.return_value = [mock_param1, mock_param2]
+        
+        # Mock the encoder.encoder.layer structure for layer freezing
+        mock_layers = []
+        for _ in range(12):  # 12 BERT layers
+            mock_layer = Mock()
+            # Create mock parameters with requires_grad=False for frozen testing
+            layer_param1 = Mock()
+            layer_param1.requires_grad = False
+            layer_param2 = Mock()
+            layer_param2.requires_grad = False
+            mock_layer.parameters.return_value = [layer_param1, layer_param2]
+            mock_layers.append(mock_layer)
+        mock_encoder.encoder.layer = mock_layers
+        
+        # Mock embeddings and pooler
+        mock_encoder.embeddings = Mock()
+        emb_param1 = Mock()
+        emb_param1.requires_grad = False
+        emb_param2 = Mock()
+        emb_param2.requires_grad = False
+        mock_encoder.embeddings.parameters.return_value = [emb_param1, emb_param2]
+        
+        mock_encoder.pooler = Mock()
+        pool_param1 = Mock()
+        pool_param1.requires_grad = False
+        pool_param2 = Mock()
+        pool_param2.requires_grad = False
+        mock_encoder.pooler.parameters.return_value = [pool_param1, pool_param2]
+        
+        return mock_encoder
+    
     @patch('rejection_detection.model.AutoModel.from_pretrained')
     @patch('rejection_detection.model.AutoConfig.from_pretrained')
     def test_model_initialization(self, mock_config, mock_model):
@@ -30,8 +71,8 @@ class TestMultiHeadClassifier:
         # Mock the config and model
         mock_config.return_value = Mock()
         mock_config.return_value.hidden_size = 768  # Set hidden_size for calculations
-        mock_encoder = Mock()
-        mock_encoder.parameters.return_value = [Mock(), Mock()]  # Make it iterable
+        
+        mock_encoder = self._create_mock_encoder()
         mock_model.return_value = mock_encoder
         
         model = MultiHeadClassifier(
@@ -51,8 +92,8 @@ class TestMultiHeadClassifier:
         # Mock the config and model
         mock_config.return_value = Mock()
         mock_config.return_value.hidden_size = 768  # Set hidden_size for calculations
-        mock_encoder = Mock()
-        mock_encoder.parameters.return_value = [Mock(), Mock()]  # Make it iterable
+        
+        mock_encoder = self._create_mock_encoder()
         mock_model.return_value = mock_encoder
         
         model = MultiHeadClassifier(
@@ -70,8 +111,8 @@ class TestMultiHeadClassifier:
         # Mock the config and model
         mock_config.return_value = Mock()
         mock_config.return_value.hidden_size = 768  # Set hidden_size for calculations
-        mock_encoder = Mock()
-        mock_encoder.parameters.return_value = [Mock(), Mock()]  # Make it iterable
+        
+        mock_encoder = self._create_mock_encoder()
         mock_model.return_value = mock_encoder
         
         model = MultiHeadClassifier(
@@ -90,8 +131,8 @@ class TestMultiHeadClassifier:
         # Mock the config and model
         mock_config.return_value = Mock()
         mock_config.return_value.hidden_size = 768  # Set hidden_size for calculations
-        mock_encoder = Mock()
-        mock_encoder.parameters.return_value = [Mock(), Mock()]  # Make it iterable
+        
+        mock_encoder = self._create_mock_encoder()
         mock_encoder.return_value = Mock(
             last_hidden_state=torch.randn(2, 128, 768),
             pooler_output=torch.randn(2, 768)
@@ -124,8 +165,8 @@ class TestMultiHeadClassifier:
         # Mock the config and model
         mock_config.return_value = Mock()
         mock_config.return_value.hidden_size = 768  # Set hidden_size for calculations
-        mock_encoder = Mock()
-        mock_encoder.parameters.return_value = [Mock(), Mock()]  # Make it iterable
+        
+        mock_encoder = self._create_mock_encoder()
         mock_encoder.return_value = Mock(
             last_hidden_state=torch.randn(2, 128, 768),
             pooler_output=torch.randn(2, 768)
@@ -155,8 +196,8 @@ class TestMultiHeadClassifier:
         # Mock the config and model
         mock_config.return_value = Mock()
         mock_config.return_value.hidden_size = 768  # Set a real hidden size
-        mock_encoder = Mock()
-        mock_encoder.parameters.return_value = [Mock(), Mock()]  # Make it iterable
+        
+        mock_encoder = self._create_mock_encoder()
         mock_model.return_value = mock_encoder
         
         model = MultiHeadClassifier(
@@ -203,8 +244,8 @@ class TestMultiHeadClassifier:
         # Mock the config and model
         mock_config.return_value = Mock()
         mock_config.return_value.hidden_size = 768  # Set hidden_size for calculations
-        mock_encoder = Mock()
-        mock_encoder.parameters.return_value = [Mock(), Mock()]  # Make it iterable
+        
+        mock_encoder = self._create_mock_encoder()
         mock_model.return_value = mock_encoder
         
         model = MultiHeadClassifier(
@@ -238,6 +279,170 @@ class TestMultiHeadClassifier:
         # Since we're using mocks, we can't easily test the actual requires_grad state
         # Instead, we just verify the model was created successfully
         assert model.freeze_encoder is False
+
+    def test_model_layer_freezing_with_real_model(self):
+        """Test layer freezing with a real model to verify actual parameter states."""
+        # Use a real model for this test to verify actual freezing behavior
+        model = MultiHeadClassifier(
+            model_name="bert-base-uncased",
+            freeze_encoder=True
+        )
+        
+        # Check that embeddings are frozen
+        for param in model.encoder.embeddings.parameters():
+            assert not param.requires_grad, "Embeddings should be frozen"
+        
+        # Check that layers 0-10 are frozen
+        for layer_idx in range(11):  # Layers 0-10
+            layer = model.encoder.encoder.layer[layer_idx]
+            for param in layer.parameters():
+                assert not param.requires_grad, f"Layer {layer_idx} should be frozen"
+        
+        # Check that layer 11 (last layer) is NOT frozen
+        last_layer = model.encoder.encoder.layer[11]
+        for param in last_layer.parameters():
+            assert param.requires_grad, "Last layer (11) should be trainable"
+        
+        # Check that pooler is frozen
+        for param in model.encoder.pooler.parameters():
+            assert not param.requires_grad, "Pooler should be frozen"
+        
+        # Check that heads are trainable
+        for param in model.heads.parameters():
+            assert param.requires_grad, "Heads should be trainable"
+
+    def test_model_no_freezing_with_real_model(self):
+        """Test that no layers are frozen when freeze_encoder=False."""
+        # Use a real model for this test
+        model = MultiHeadClassifier(
+            model_name="bert-base-uncased",
+            freeze_encoder=False
+        )
+        
+        # Check that all encoder parameters are trainable
+        for param in model.encoder.parameters():
+            assert param.requires_grad, "All encoder parameters should be trainable when freeze_encoder=False"
+        
+        # Check that heads are trainable
+        for param in model.heads.parameters():
+            assert param.requires_grad, "Heads should be trainable"
+
+    def test_model_parameter_counts(self):
+        """Test that parameter counts are correct with layer freezing."""
+        model_frozen = MultiHeadClassifier(
+            model_name="bert-base-uncased",
+            freeze_encoder=True
+        )
+        
+        model_unfrozen = MultiHeadClassifier(
+            model_name="bert-base-uncased",
+            freeze_encoder=False
+        )
+        
+        # Both models should have the same total parameters
+        total_params_frozen = sum(p.numel() for p in model_frozen.parameters())
+        total_params_unfrozen = sum(p.numel() for p in model_unfrozen.parameters())
+        assert total_params_frozen == total_params_unfrozen
+        
+        # But different trainable parameters
+        trainable_params_frozen = sum(p.numel() for p in model_frozen.parameters() if p.requires_grad)
+        trainable_params_unfrozen = sum(p.numel() for p in model_unfrozen.parameters() if p.requires_grad)
+        
+        # Frozen model should have fewer trainable parameters
+        assert trainable_params_frozen < trainable_params_unfrozen
+        
+        # Frozen model should have approximately 7.74% trainable parameters
+        trainable_percentage = 100 * trainable_params_frozen / total_params_frozen
+        assert 7.0 <= trainable_percentage <= 8.0, f"Expected ~7.74% trainable, got {trainable_percentage:.2f}%"
+
+    def test_model_gradient_flow_with_freezing(self):
+        """Test gradient flow with layer freezing."""
+        model = MultiHeadClassifier(
+            model_name="bert-base-uncased",
+            freeze_encoder=True
+        )
+        
+        # Create dummy input
+        batch_size = 2
+        seq_length = 128
+        input_ids = torch.randint(0, 1000, (batch_size, seq_length))
+        attention_mask = torch.ones(batch_size, seq_length)
+        
+        # Forward pass
+        outputs = model(input_ids, attention_mask)
+        
+        # Create dummy loss
+        total_loss = sum(logits.sum() for logits in outputs.values())
+        
+        # Backward pass
+        total_loss.backward()
+        
+        # Check that only last layer and heads have gradients
+        # Embeddings should have no gradients
+        for param in model.encoder.embeddings.parameters():
+            assert param.grad is None, "Embeddings should have no gradients"
+        
+        # Layers 0-10 should have no gradients
+        for layer_idx in range(11):
+            layer = model.encoder.encoder.layer[layer_idx]
+            for param in layer.parameters():
+                assert param.grad is None, f"Layer {layer_idx} should have no gradients"
+        
+        # Layer 11 should have gradients
+        last_layer = model.encoder.encoder.layer[11]
+        has_gradients = False
+        for param in last_layer.parameters():
+            if param.grad is not None:
+                has_gradients = True
+                break
+        assert has_gradients, "Last layer should have gradients"
+        
+        # Pooler should have no gradients
+        for param in model.encoder.pooler.parameters():
+            assert param.grad is None, "Pooler should have no gradients"
+        
+        # Heads should have gradients
+        for param in model.heads.parameters():
+            assert param.grad is not None, "Heads should have gradients"
+
+    def test_model_layer_specific_freezing(self):
+        """Test that specific layers are frozen/unfrozen correctly."""
+        model = MultiHeadClassifier(
+            model_name="bert-base-uncased",
+            freeze_encoder=True
+        )
+        
+        # Test specific layer components
+        # Last layer attention
+        last_layer = model.encoder.encoder.layer[11]
+        attention = last_layer.attention
+        
+        # All attention components should be trainable
+        assert attention.self.query.weight.requires_grad
+        assert attention.self.query.bias.requires_grad
+        assert attention.self.key.weight.requires_grad
+        assert attention.self.key.bias.requires_grad
+        assert attention.self.value.weight.requires_grad
+        assert attention.self.value.bias.requires_grad
+        assert attention.output.dense.weight.requires_grad
+        assert attention.output.dense.bias.requires_grad
+        assert attention.output.LayerNorm.weight.requires_grad
+        assert attention.output.LayerNorm.bias.requires_grad
+        
+        # Last layer intermediate and output
+        assert last_layer.intermediate.dense.weight.requires_grad
+        assert last_layer.intermediate.dense.bias.requires_grad
+        assert last_layer.output.dense.weight.requires_grad
+        assert last_layer.output.dense.bias.requires_grad
+        assert last_layer.output.LayerNorm.weight.requires_grad
+        assert last_layer.output.LayerNorm.bias.requires_grad
+        
+        # Test that first layer is frozen
+        first_layer = model.encoder.encoder.layer[0]
+        assert not first_layer.attention.self.query.weight.requires_grad
+        assert not first_layer.attention.self.query.bias.requires_grad
+        assert not first_layer.intermediate.dense.weight.requires_grad
+        assert not first_layer.output.dense.weight.requires_grad
 
 
 class TestMultiHeadLoss:
@@ -398,6 +603,47 @@ class TestMultiHeadLoss:
 class TestModelIntegration:
     """Integration tests for model components."""
     
+    def _create_mock_encoder(self):
+        """Helper to create a properly structured mock encoder."""
+        mock_encoder = Mock()
+        
+        # Create mock parameters with requires_grad=False for frozen testing
+        mock_param1 = Mock()
+        mock_param1.requires_grad = False
+        mock_param2 = Mock()
+        mock_param2.requires_grad = False
+        mock_encoder.parameters.return_value = [mock_param1, mock_param2]
+        
+        # Mock the encoder.encoder.layer structure for layer freezing
+        mock_layers = []
+        for _ in range(12):  # 12 BERT layers
+            mock_layer = Mock()
+            # Create mock parameters with requires_grad=False for frozen testing
+            layer_param1 = Mock()
+            layer_param1.requires_grad = False
+            layer_param2 = Mock()
+            layer_param2.requires_grad = False
+            mock_layer.parameters.return_value = [layer_param1, layer_param2]
+            mock_layers.append(mock_layer)
+        mock_encoder.encoder.layer = mock_layers
+        
+        # Mock embeddings and pooler
+        mock_encoder.embeddings = Mock()
+        emb_param1 = Mock()
+        emb_param1.requires_grad = False
+        emb_param2 = Mock()
+        emb_param2.requires_grad = False
+        mock_encoder.embeddings.parameters.return_value = [emb_param1, emb_param2]
+        
+        mock_encoder.pooler = Mock()
+        pool_param1 = Mock()
+        pool_param1.requires_grad = False
+        pool_param2 = Mock()
+        pool_param2.requires_grad = False
+        mock_encoder.pooler.parameters.return_value = [pool_param1, pool_param2]
+        
+        return mock_encoder
+    
     @patch('rejection_detection.model.AutoModel.from_pretrained')
     @patch('rejection_detection.model.AutoConfig.from_pretrained')
     def test_model_and_loss_integration(self, mock_config, mock_model):
@@ -405,8 +651,8 @@ class TestModelIntegration:
         # Mock the config and model
         mock_config.return_value = Mock()
         mock_config.return_value.hidden_size = 768  # Set hidden_size for calculations
-        mock_encoder = Mock()
-        mock_encoder.parameters.return_value = [Mock(), Mock()]  # Make it iterable
+        
+        mock_encoder = self._create_mock_encoder()
         mock_encoder.return_value = Mock(
             last_hidden_state=torch.randn(2, 128, 768),
             pooler_output=torch.randn(2, 768)
@@ -491,8 +737,8 @@ class TestModelIntegration:
         # Mock the config and model
         mock_config.return_value = Mock()
         mock_config.return_value.hidden_size = 768  # Set hidden_size for calculations
-        mock_encoder = Mock()
-        mock_encoder.parameters.return_value = [Mock(), Mock()]  # Make it iterable
+        
+        mock_encoder = self._create_mock_encoder()
         mock_model.return_value = mock_encoder
         
         model = MultiHeadClassifier(

@@ -51,17 +51,17 @@ class RefusalStyle(Enum):
 class ComplianceStyle(Enum):
     """Head B.B: Compliance style (diagnostic, single choice) - How the model complied."""
     
-    STYLE_DIRECT_ANSWER = "STYLE.DIRECT_ANSWER"         # Direct, straightforward answer
-    STYLE_HIGH_LEVEL = "STYLE.HIGH_LEVEL"               # High-level overview/guidance
-    STYLE_STEP_BY_STEP = "STYLE.STEP_BY_STEP"           # Detailed step-by-step instructions
-    STYLE_WITH_WARNINGS = "STYLE.WITH_WARNINGS"         # Answer with safety warnings
-    STYLE_REFRACT = "STYLE.REFRACT"                     # Reframe then answer
+    STYLE_DIRECT_ANSWER = "STYLE.DIRECT_ANSWER"              # Direct, straightforward answer
+    STYLE_HIGH_LEVEL = "STYLE.HIGH_LEVEL"                    # High-level overview/guidance
+    STYLE_STEP_BY_STEP = "STYLE.STEP_BY_STEP"                # Detailed step-by-step instructions
+    STYLE_WITH_WARNINGS = "STYLE.WITH_WARNINGS"              # Answer with safety warnings
+    STYLE_REFRACT = "STYLE.REFRACT"                          # Reframe then answer
     STYLE_CLARIFY_THEN_COMPLY = "STYLE.CLARIFY_THEN_COMPLY"  # Ask for clarification then answer
-    STYLE_TOOL_USE = "STYLE.TOOL_USE"                   # Use of tools/APIs to answer
-    STYLE_CITED = "STYLE.CITED"                         # Answer with citations/references
-    STYLE_CREATIVE = "STYLE.CREATIVE"                   # Creative/artistic approach
-    STYLE_TRANSFORM_ONLY = "STYLE.TRANSFORM_ONLY"       # Transform-only operations (aligns with COMPLY.TRANSFORM)
-    STYLE_PARTIAL_COMPLY = "STYLE.PARTIAL_COMPLY"       # Partial compliance with limitations
+    STYLE_TOOL_USE = "STYLE.TOOL_USE"                        # Use of tools/APIs to answer
+    STYLE_CITED = "STYLE.CITED"                              # Answer with citations/references
+    STYLE_CREATIVE = "STYLE.CREATIVE"                        # Creative/artistic approach
+    STYLE_TRANSFORM_ONLY = "STYLE.TRANSFORM_ONLY"            # Transform-only operations (aligns with COMPLY.TRANSFORM)
+    STYLE_PARTIAL_COMPLY = "STYLE.PARTIAL_COMPLY"            # Partial compliance with limitations
 
 
 class HarmCategory(Enum):

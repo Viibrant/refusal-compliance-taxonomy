@@ -311,16 +311,16 @@ class TestMultiHeadTrainer:
         
         trainer = MultiHeadTrainer(mock_model, mock_tokenizer.return_value, mock_accelerator.return_value, str(temp_output_dir))
         
-        # Create mock predictions and labels
+        # Create mock predictions and labels with more samples to avoid ROC AUC warnings
         predictions = {
-            "head_a": torch.tensor([0, 1]),  # Discrete predictions for classification
-            "head_c": torch.tensor([[0.9, 0.1, 0.2], [0.1, 0.8, 0.3]]),  # Continuous for multilabel
-            "head_d": torch.tensor([[0.9, 0.1, 0.8], [0.2, 0.7, 0.1]])   # Continuous for multilabel
+            "head_a": torch.tensor([0, 1, 0, 1]),  # Discrete predictions for classification
+            "head_c": torch.tensor([[0.9, 0.1, 0.2], [0.1, 0.8, 0.3], [0.2, 0.7, 0.1], [0.8, 0.2, 0.9]]),  # Continuous for multilabel
+            "head_d": torch.tensor([[0.9, 0.1, 0.8], [0.2, 0.7, 0.1], [0.1, 0.9, 0.2], [0.8, 0.1, 0.9]])   # Continuous for multilabel
         }
         labels = {
-            "head_a": torch.tensor([0, 1]),
-            "head_c": torch.tensor([[1, 0, 0], [0, 1, 0]]).float(),
-            "head_d": torch.tensor([[1, 0, 1], [0, 1, 0]]).float()
+            "head_a": torch.tensor([0, 1, 0, 1]),
+            "head_c": torch.tensor([[1, 0, 0], [0, 1, 0], [0, 1, 1], [1, 0, 1]]).float(),
+            "head_d": torch.tensor([[1, 0, 1], [0, 1, 0], [0, 1, 0], [1, 0, 1]]).float()
         }
         
         # Compute metrics
