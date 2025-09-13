@@ -52,11 +52,22 @@ class DatasetIngester:
         try:
             # Load dataset
             if source.split:
-                dataset = load_dataset(source.source_path, split=source.split)
+                # For datasets with configurations, use the split as config name
+                dataset = load_dataset(source.source_path, source.split)
             else:
                 dataset = load_dataset(source.source_path)
                 # Use first split if no specific split specified
                 dataset = dataset[list(dataset.keys())[0]]
+            
+            # Handle DatasetDict case (when split is specified but returns a dict)
+            if hasattr(dataset, 'keys') and not isinstance(dataset, Dataset):
+                # If it's a DatasetDict, use the first available split
+                available_splits = list(dataset.keys())
+                if available_splits:
+                    dataset = dataset[available_splits[0]]
+                    logger.info(f"Using split '{available_splits[0]}' from DatasetDict")
+                else:
+                    raise ValueError("No splits available in DatasetDict")
             
             # Convert to list of dicts
             if isinstance(dataset, Dataset):

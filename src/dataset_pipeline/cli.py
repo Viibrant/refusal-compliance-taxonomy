@@ -84,6 +84,8 @@ def main():
         validate_config(args)
     else:
         parser.print_help()
+        import sys
+        sys.exit(1)
 
 
 def run_pipeline(args):

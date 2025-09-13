@@ -1,6 +1,7 @@
 """Inference script for multi-head rejection detection model."""
 
 import json
+import sys
 import torch
 from pathlib import Path
 from typing import Dict, List, Any, Optional
@@ -161,8 +162,13 @@ def main():
     
     # Load model
     print(f"Loading model from {args.model_path}...")
-    model, tokenizer = load_trained_model(args.model_path)
-    print("Model loaded successfully!")
+    try:
+        model, tokenizer = load_trained_model(args.model_path)
+        print("Model loaded successfully!")
+    except FileNotFoundError as e:
+        print(f"Error: Model not found at {args.model_path}")
+        print(f"Details: {e}")
+        sys.exit(1)
     
     if args.text:
         # Single text prediction

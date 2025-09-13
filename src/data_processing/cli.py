@@ -3,6 +3,7 @@
 import argparse
 import logging
 import numpy as np
+import sys
 from pathlib import Path
 from typing import Dict, List, Any
 
@@ -57,7 +58,11 @@ def main():
         )
         
         processor = DataProcessor(config)
-        report = processor.process_dataset(args.input, args.output)
+        try:
+            report = processor.process_dataset(args.input, args.output)
+        except FileNotFoundError:
+            print(f"Error: File '{args.input}' not found.")
+            sys.exit(1)
         
         print(f"Processing complete!")
         print(f"Total items: {report['total_items']}")
@@ -68,7 +73,11 @@ def main():
     
     elif args.command == "validate":
         processor = DataProcessor()
-        data = processor.load_data(args.input)
+        try:
+            data = processor.load_data(args.input)
+        except FileNotFoundError:
+            print(f"Error: File '{args.input}' not found.")
+            sys.exit(1)
         valid_data, errors = processor.validate_data(data)
         
         print(f"Validation Results:")
@@ -88,7 +97,11 @@ def main():
     
     elif args.command == "stats":
         processor = DataProcessor()
-        data = processor.load_data(args.input)
+        try:
+            data = processor.load_data(args.input)
+        except FileNotFoundError:
+            print(f"Error: File '{args.input}' not found.")
+            sys.exit(1)
         
         print(f"Dataset Statistics:")
         print(f"Total items: {len(data)}")
