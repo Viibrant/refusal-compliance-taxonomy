@@ -99,6 +99,7 @@ def main() -> None:
     predict_parser.add_argument("--return_probabilities", action="store_true", help="Return full probability distributions")
     predict_parser.add_argument("--max_length", type=int, default=512, help="Maximum sequence length")
     
+    
     # Info command
     info_parser = subparsers.add_parser("info", help="Show model information")
     
