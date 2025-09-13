@@ -113,7 +113,7 @@ def test_multi_head_loss():
     
     head_configs = get_head_configs()
     for head_name, head_config in head_configs.items():
-        if head_config.head_type == "multilabel":
+        if head_config.head_type in ["multilabel", "boolean"]:
             outputs[head_name] = torch.rand(batch_size, head_config.num_classes)
             labels[head_name] = torch.randint(0, 2, (batch_size, head_config.num_classes)).float()
         else:

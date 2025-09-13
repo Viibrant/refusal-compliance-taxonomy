@@ -69,8 +69,8 @@ class MultiHeadClassifier(nn.Module):
     
     def _create_head(self, num_classes: int, head_type: str) -> nn.Module:
         """Create a classification head."""
-        if head_type == "multilabel":
-            # Multi-label classification (sigmoid activation)
+        if head_type in ["multilabel", "boolean"]:
+            # Multi-label/Boolean classification (sigmoid activation)
             return nn.Sequential(
                 nn.Linear(self.head_hidden_size, self.head_hidden_size // 2),
                 nn.ReLU(),
@@ -295,8 +295,8 @@ class MultiHeadLoss(nn.Module):
             head_config = get_head_config(head_name)
             head_labels = labels[head_name]
             
-            if head_config.head_type == "multilabel":
-                # Multi-label binary cross-entropy
+            if head_config.head_type in ["multilabel", "boolean"]:
+                # Multi-label/Boolean binary cross-entropy
                 loss = self.bce_loss(logits, head_labels.float())
             else:
                 # Single-label cross-entropy
