@@ -42,6 +42,7 @@ def main():
     generate_parser.add_argument("--models", nargs="+", default=["gpt-3.5-turbo"], help="Models to use for generation")
     generate_parser.add_argument("--temperature", type=float, default=0.7, help="Generation temperature")
     generate_parser.add_argument("--max-tokens", type=int, default=512, help="Maximum tokens to generate")
+    generate_parser.add_argument("--batch-size", type=int, default=8, help="Batch size for generation (higher = faster but more memory)")
     
     # Labeling command
     label_parser = subparsers.add_parser("label", help="Label data with CAI judge only")
@@ -143,6 +144,12 @@ def run_generation(args):
     # Find JSON files with ingested data
     json_files = list(input_dir.glob("*_data.json"))
     
+    if not json_files:
+        print("No data files found in input directory")
+        return
+    
+    print(f"Found {len(json_files)} data files to process")
+    
     for json_file in json_files:
         with open(json_file, 'r') as f:
             data = json.load(f)
@@ -151,13 +158,16 @@ def run_generation(args):
         prompts = [item["prompt"] for item in data if "prompt" in item]
         
         if prompts:
-            print(f"Generating responses for {len(prompts)} prompts from {json_file.name}")
-            responses = generator.generate_responses(prompts)
+            print(f"\nProcessing {json_file.name} with {len(prompts)} prompts")
+            print(f"Using batch size: {args.batch_size}")
+            responses = generator.generate_responses(prompts, batch_size=args.batch_size)
             
             # Save responses
             output_file = output_dir / f"{json_file.stem}_generated_responses.json"
             generator.save_generated_responses(responses, output_file)
-            print(f"Saved {len(responses)} responses to {output_file}")
+            print(f"✅ Saved {len(responses)} responses to {output_file}")
+        else:
+            print(f"⚠️  No prompts found in {json_file.name}")
 
 
 def run_labeling(args):

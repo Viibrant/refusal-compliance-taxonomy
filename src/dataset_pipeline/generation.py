@@ -11,6 +11,7 @@ import time
 import random
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from tqdm import tqdm
 
 from .config import GenerationConfig
 
@@ -140,21 +141,86 @@ class ResponseGenerator:
             logger.error(f"Failed to load Hugging Face model {model}: {e}")
             return None
     
-    def generate_responses(self, prompts: List[str], jailbreak_wrappers: Optional[List[str]] = None) -> List[GeneratedResponse]:
-        """Generate responses for a list of prompts."""
+    def generate_responses(self, prompts: List[str], jailbreak_wrappers: Optional[List[str]] = None, batch_size: int = 8) -> List[GeneratedResponse]:
+        """Generate responses for a list of prompts using batching for efficiency."""
         all_responses = []
         
+        # Prepare all prompts (base + jailbreak variants)
+        all_prompts = []
+        prompt_metadata = []
+        
         for prompt in prompts:
-            # Generate with base prompt
-            base_responses = self._generate_for_prompt(prompt)
-            all_responses.extend(base_responses)
+            # Add base prompt
+            all_prompts.append(prompt)
+            prompt_metadata.append({"jailbreak_type": None})
             
-            # Generate with jailbreak wrappers if specified
+            # Add jailbreak variants if specified
             if jailbreak_wrappers:
                 for wrapper in jailbreak_wrappers:
                     wrapped_prompt = self._apply_jailbreak_wrapper(prompt, wrapper)
-                    wrapped_responses = self._generate_for_prompt(wrapped_prompt, jailbreak_type=wrapper)
-                    all_responses.extend(wrapped_responses)
+                    all_prompts.append(wrapped_prompt)
+                    prompt_metadata.append({"jailbreak_type": wrapper})
+        
+        # Process in batches
+        total_batches = (len(all_prompts) + batch_size - 1) // batch_size
+        
+        with tqdm(total=len(all_prompts), desc="Generating responses", unit="prompt", 
+                 bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]') as pbar:
+            
+            for batch_idx in range(total_batches):
+                start_idx = batch_idx * batch_size
+                end_idx = min(start_idx + batch_size, len(all_prompts))
+                batch_prompts = all_prompts[start_idx:end_idx]
+                batch_metadata = prompt_metadata[start_idx:end_idx]
+                
+                # Update progress bar description
+                pbar.set_description(f"Generating batch {batch_idx+1}/{total_batches}")
+                
+                # Generate responses for this batch
+                batch_responses = self._generate_batch(batch_prompts, batch_metadata)
+                all_responses.extend(batch_responses)
+                
+                # Update progress bar
+                pbar.update(len(batch_prompts))
+        
+        return all_responses
+    
+    def _generate_batch(self, prompts: List[str], metadata_list: List[Dict[str, Any]]) -> List[GeneratedResponse]:
+        """Generate responses for a batch of prompts using all configured models."""
+        all_responses = []
+        
+        # Filter out None clients
+        active_clients = {name: config for name, config in self.api_clients.items() if config is not None}
+        
+        for model_name, client_config in active_clients.items():
+            try:
+                # Generate responses for all prompts in the batch with this model
+                model_responses = self._call_model_batch(client_config, prompts, model_name, metadata_list)
+                all_responses.extend(model_responses)
+                
+            except Exception as e:
+                logger.error(f"Failed to generate batch responses with {model_name}: {e}")
+                # Fallback to individual generation if batch fails
+                for i, prompt in enumerate(prompts):
+                    try:
+                        response_text = self._call_model(client_config, prompt)
+                        response = GeneratedResponse(
+                            prompt=prompt,
+                            response=response_text,
+                            model_name=model_name,
+                            temperature=self.config.temperature,
+                            system_prompt=self.config.system_prompt,
+                            generation_time=0.0,  # Unknown for fallback
+                            metadata={
+                                "jailbreak_type": metadata_list[i].get("jailbreak_type"),
+                                "max_tokens": self.config.max_tokens,
+                                "fallback": True
+                            }
+                        )
+                        all_responses.append(response)
+                    except Exception as e2:
+                        logger.error(f"Failed to generate individual response with {model_name}: {e2}")
+                        continue
         
         return all_responses
     
@@ -188,6 +254,42 @@ class ResponseGenerator:
             except Exception as e:
                 logger.error(f"Failed to generate response with {model_name}: {e}")
                 continue
+        
+        return responses
+    
+    def _call_model_batch(self, client_config: Dict[str, Any], prompts: List[str], model_name: str, metadata_list: List[Dict[str, Any]]) -> List[GeneratedResponse]:
+        """Call model with a batch of prompts for efficiency."""
+        responses = []
+        
+        if client_config["type"] == "huggingface":
+            return self._call_huggingface_batch(client_config, prompts, model_name, metadata_list)
+        elif client_config["type"] == "openai":
+            return self._call_openai_batch(client_config, prompts, model_name, metadata_list)
+        elif client_config["type"] == "anthropic":
+            return self._call_anthropic_batch(client_config, prompts, model_name, metadata_list)
+        elif client_config["type"] == "google":
+            return self._call_google_batch(client_config, prompts, model_name, metadata_list)
+        else:
+            # Fallback to individual calls
+            for i, prompt in enumerate(prompts):
+                try:
+                    response_text = self._call_model(client_config, prompt)
+                    response = GeneratedResponse(
+                        prompt=prompt,
+                        response=response_text,
+                        model_name=model_name,
+                        temperature=self.config.temperature,
+                        system_prompt=self.config.system_prompt,
+                        generation_time=0.0,
+                        metadata={
+                            "jailbreak_type": metadata_list[i].get("jailbreak_type"),
+                            "max_tokens": self.config.max_tokens
+                        }
+                    )
+                    responses.append(response)
+                except Exception as e:
+                    logger.error(f"Failed to generate response for prompt {i}: {e}")
+                    continue
         
         return responses
     
@@ -314,6 +416,172 @@ class ResponseGenerator:
         except Exception as e:
             logger.error(f"Hugging Face generation error: {e}")
             return f"Error generating response: {str(e)}"
+    
+    def _call_huggingface_batch(self, client_config: Dict[str, Any], prompts: List[str], model_name: str, metadata_list: List[Dict[str, Any]]) -> List[GeneratedResponse]:
+        """Call Hugging Face model with a batch of prompts for efficiency."""
+        responses = []
+        
+        try:
+            generator = client_config["generator"]
+            tokenizer = client_config["tokenizer"]
+            
+            # Prepare prompts with proper formatting
+            formatted_prompts = []
+            for prompt in prompts:
+                # Add conversation formatting for chat models
+                if "chat" in model_name.lower() or "instruct" in model_name.lower():
+                    if hasattr(tokenizer, 'chat_template') and tokenizer.chat_template:
+                        messages = [
+                            {"role": "system", "content": self.config.system_prompt or "You are a helpful assistant."},
+                            {"role": "user", "content": prompt}
+                        ]
+                        full_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+                    else:
+                        full_prompt = f"System: {self.config.system_prompt or 'You are a helpful assistant.'}\nUser: {prompt}\nAssistant:"
+                elif "dialogpt" in model_name.lower():
+                    # DialoGPT uses a specific format
+                    full_prompt = f"{prompt} {tokenizer.eos_token}"
+                else:
+                    full_prompt = prompt
+                
+                formatted_prompts.append(full_prompt)
+            
+            # Generate responses in batch
+            start_time = time.time()
+            outputs = generator(
+                formatted_prompts,
+                max_new_tokens=self.config.max_tokens,
+                temperature=self.config.temperature,
+                do_sample=True,
+                pad_token_id=tokenizer.eos_token_id,
+                return_full_text=False
+            )
+            generation_time = time.time() - start_time
+            
+            # Process outputs
+            for i, (prompt, output, metadata) in enumerate(zip(prompts, outputs, metadata_list)):
+                if isinstance(output, list) and len(output) > 0:
+                    response_text = output[0]["generated_text"]
+                elif isinstance(output, dict):
+                    response_text = output.get("generated_text", "")
+                else:
+                    response_text = str(output)
+                
+                response = GeneratedResponse(
+                    prompt=prompt,
+                    response=response_text,
+                    model_name=model_name,
+                    temperature=self.config.temperature,
+                    system_prompt=self.config.system_prompt,
+                    generation_time=generation_time / len(prompts),  # Average time per prompt
+                    metadata={
+                        "jailbreak_type": metadata.get("jailbreak_type"),
+                        "max_tokens": self.config.max_tokens,
+                        "batch_size": len(prompts)
+                    }
+                )
+                responses.append(response)
+                
+        except Exception as e:
+            logger.error(f"Hugging Face batch generation error: {e}")
+            # Fallback to individual generation
+            for i, prompt in enumerate(prompts):
+                try:
+                    response_text = self._call_huggingface(client_config, prompt)
+                    response = GeneratedResponse(
+                        prompt=prompt,
+                        response=response_text,
+                        model_name=model_name,
+                        temperature=self.config.temperature,
+                        system_prompt=self.config.system_prompt,
+                        generation_time=0.0,
+                        metadata={
+                            "jailbreak_type": metadata_list[i].get("jailbreak_type"),
+                            "max_tokens": self.config.max_tokens,
+                            "fallback": True
+                        }
+                    )
+                    responses.append(response)
+                except Exception as e2:
+                    logger.error(f"Failed to generate individual response: {e2}")
+                    continue
+        
+        return responses
+    
+    def _call_openai_batch(self, client_config: Dict[str, Any], prompts: List[str], model_name: str, metadata_list: List[Dict[str, Any]]) -> List[GeneratedResponse]:
+        """Call OpenAI API with a batch of prompts."""
+        # For now, fallback to individual calls
+        responses = []
+        for i, prompt in enumerate(prompts):
+            try:
+                response_text = self._call_openai(client_config, prompt)
+                response = GeneratedResponse(
+                    prompt=prompt,
+                    response=response_text,
+                    model_name=model_name,
+                    temperature=self.config.temperature,
+                    system_prompt=self.config.system_prompt,
+                    generation_time=0.0,
+                    metadata={
+                        "jailbreak_type": metadata_list[i].get("jailbreak_type"),
+                        "max_tokens": self.config.max_tokens
+                    }
+                )
+                responses.append(response)
+            except Exception as e:
+                logger.error(f"Failed to generate OpenAI response for prompt {i}: {e}")
+                continue
+        return responses
+    
+    def _call_anthropic_batch(self, client_config: Dict[str, Any], prompts: List[str], model_name: str, metadata_list: List[Dict[str, Any]]) -> List[GeneratedResponse]:
+        """Call Anthropic API with a batch of prompts."""
+        # For now, fallback to individual calls
+        responses = []
+        for i, prompt in enumerate(prompts):
+            try:
+                response_text = self._call_anthropic(client_config, prompt)
+                response = GeneratedResponse(
+                    prompt=prompt,
+                    response=response_text,
+                    model_name=model_name,
+                    temperature=self.config.temperature,
+                    system_prompt=self.config.system_prompt,
+                    generation_time=0.0,
+                    metadata={
+                        "jailbreak_type": metadata_list[i].get("jailbreak_type"),
+                        "max_tokens": self.config.max_tokens
+                    }
+                )
+                responses.append(response)
+            except Exception as e:
+                logger.error(f"Failed to generate Anthropic response for prompt {i}: {e}")
+                continue
+        return responses
+    
+    def _call_google_batch(self, client_config: Dict[str, Any], prompts: List[str], model_name: str, metadata_list: List[Dict[str, Any]]) -> List[GeneratedResponse]:
+        """Call Google API with a batch of prompts."""
+        # For now, fallback to individual calls
+        responses = []
+        for i, prompt in enumerate(prompts):
+            try:
+                response_text = self._call_google(client_config, prompt)
+                response = GeneratedResponse(
+                    prompt=prompt,
+                    response=response_text,
+                    model_name=model_name,
+                    temperature=self.config.temperature,
+                    system_prompt=self.config.system_prompt,
+                    generation_time=0.0,
+                    metadata={
+                        "jailbreak_type": metadata_list[i].get("jailbreak_type"),
+                        "max_tokens": self.config.max_tokens
+                    }
+                )
+                responses.append(response)
+            except Exception as e:
+                logger.error(f"Failed to generate Google response for prompt {i}: {e}")
+                continue
+        return responses
     
     def _apply_jailbreak_wrapper(self, prompt: str, wrapper_type: str) -> str:
         """Apply a jailbreak wrapper to a prompt."""
