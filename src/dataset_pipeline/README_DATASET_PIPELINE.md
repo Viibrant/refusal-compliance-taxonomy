@@ -15,24 +15,24 @@ The dataset pipeline processes multiple sources of data to create a unified, mul
 ## Architecture
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐     ┌─────────────────┐
 │   Data Sources  │───▶│   Ingestion      │───▶│   Generation    │───▶│   CAI Judge     │
-│                 │    │                  │    │                 │    │                 │
-│ • WildGuardMix  │    │ • Hugging Face   │    │ • Multi-LLM     │    │ • Constitutional│
-│ • SORRY-Bench   │    │ • GitHub         │    │ • Jailbreak     │    │ • Two-pass      │
-│ • Do-Not-Answer │    │ • Local files    │    │ • Temperature   │    │ • Heuristics    │
-│ • JailbreakBench│    │ • Column mapping │    │ • System prompts│    │ • Confidence    │
-│ • OR-Bench      │    │ • Filtering      │    │ • Batch process │    │ • Rationale     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘    └─────────────────┘
-                                                                              │
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐           │
+│                 │     │                  │     │                 │     │                 │
+│ • WildGuardMix  │     │ • Hugging Face   │     │ • Multi-LLM     │     │ • Constitutional│
+│ • SORRY-Bench   │     │ • GitHub         │     │ • Jailbreak     │     │ • Two-pass      │
+│ • Do-Not-Answer │     │ • Local files    │     │ • Temperature   │     │ • Heuristics    │
+│ • JailbreakBench│     │ • Column mapping │     │ • System prompts│     │ • Confidence    │
+│ • OR-Bench      │     │ • Filtering      │     │ • Batch process │     │ • Rationale     │
+└─────────────────┘     └──────────────────┘     └─────────────────┘     └─────────────────┘
+                                                                                │
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐            │
 │   Final Dataset │◀───│   Quality Control│◀───│   Data Prep     │◀──────────┘
-│                 │    │                  │    │                 │
-│ • Multi-head    │    │ • PII Detection  │    │ • Deduplication │
-│ • JSON/JSONL    │    │ • Toxicity Check │    │ • Validation    │
-│ • Provenance    │    │ • Human Sampling │    │ • Splitting     │
-│ • Metadata      │    │ • Agreement      │    │ • Balancing     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+│                 │     │                  │     │                 │
+│ • Multi-head    │     │ • PII Detection  │     │ • Deduplication │
+│ • JSON/JSONL    │     │ • Toxicity Check │     │ • Validation    │
+│ • Provenance    │     │ • Human Sampling │     │ • Splitting     │
+│ • Metadata      │     │ • Agreement      │     │ • Balancing     │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
 ```
 
 ## Installation
