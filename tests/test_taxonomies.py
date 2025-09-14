@@ -3,8 +3,7 @@
 import pytest
 from rejection_detection.taxonomies import (
     OutcomeType,
-    RefusalStyle,
-    ComplianceStyle,
+    ResponseStyle,
     HarmCategory,
     HarmlessCategory,
     HeadConfig,
@@ -52,37 +51,35 @@ class TestEnums:
         assert "COMPLY.REDIRECTED" in all_values
         assert "COMPLY.PARTIAL_SAFE" in all_values
     
-    def test_refusal_style_enum(self):
-        """Test RefusalStyle enum values."""
-        assert RefusalStyle.STYLE_DIRECT.value == "STYLE.DIRECT"
-        assert RefusalStyle.STYLE_EXPLAIN.value == "STYLE.EXPLAIN"
-        assert RefusalStyle.STYLE_REDIRECT.value == "STYLE.REDIRECT"
-        assert RefusalStyle.STYLE_CLARIFY.value == "STYLE.CLARIFY"
-        assert RefusalStyle.STYLE_APPEAL_TO_VALUES.value == "STYLE.APPEAL_TO_VALUES"
-        assert RefusalStyle.STYLE_EMPATHETIC.value == "STYLE.EMPATHETIC"
-        assert RefusalStyle.STYLE_RATE_LIMIT.value == "STYLE.RATE_LIMIT"
+    def test_response_style_enum(self):
+        """Test ResponseStyle enum values."""
+        assert ResponseStyle.STYLE_DIRECT.value == "STYLE.DIRECT"
+        assert ResponseStyle.STYLE_EXPLAIN.value == "STYLE.EXPLAIN"
+        assert ResponseStyle.STYLE_EMPATHETIC.value == "STYLE.EMPATHETIC"
+        assert ResponseStyle.STYLE_CLARIFY_TO_PROCEED.value == "STYLE.CLARIFY_TO_PROCEED"
+        assert ResponseStyle.STYLE_APPEAL_TO_VALUES.value == "STYLE.APPEAL_TO_VALUES"
+        assert ResponseStyle.STYLE_DIRECT_ANSWER.value == "STYLE.DIRECT_ANSWER"
+        assert ResponseStyle.STYLE_HIGH_LEVEL.value == "STYLE.HIGH_LEVEL"
+        assert ResponseStyle.STYLE_STEP_BY_STEP.value == "STYLE.STEP_BY_STEP"
+        assert ResponseStyle.STYLE_WITH_WARNINGS.value == "STYLE.WITH_WARNINGS"
+        assert ResponseStyle.STYLE_REFRACT.value == "STYLE.REFRACT"
+        assert ResponseStyle.STYLE_CLARIFY_THEN_COMPLY.value == "STYLE.CLARIFY_THEN_COMPLY"
+        assert ResponseStyle.STYLE_TOOL_USE.value == "STYLE.TOOL_USE"
+        assert ResponseStyle.STYLE_CITED.value == "STYLE.CITED"
+        assert ResponseStyle.STYLE_CREATIVE.value == "STYLE.CREATIVE"
+        assert ResponseStyle.STYLE_TRANSFORM_ONLY.value == "STYLE.TRANSFORM_ONLY"
+        assert ResponseStyle.STYLE_PARTIAL_COMPLY.value == "STYLE.PARTIAL_COMPLY"
+        assert ResponseStyle.STYLE_ANALOGY.value == "STYLE.ANALOGY"
+        assert ResponseStyle.STYLE_SPECULATIVE.value == "STYLE.SPECULATIVE"
+        assert ResponseStyle.STYLE_ELABORATIVE.value == "STYLE.ELABORATIVE"
+        assert ResponseStyle.STYLE_INTERACTIVE.value == "STYLE.INTERACTIVE"
+        assert ResponseStyle.STYLE_PERSONA_BASED.value == "STYLE.PERSONA_BASED"
+        assert ResponseStyle.STYLE_HUMOROUS.value == "STYLE.HUMOROUS"
+        assert ResponseStyle.STYLE_FORMAL.value == "STYLE.FORMAL"
         
         # Test all values
-        all_values = [e.value for e in RefusalStyle]
-        assert len(all_values) == 7
-    
-    def test_compliance_style_enum(self):
-        """Test ComplianceStyle enum values."""
-        assert ComplianceStyle.STYLE_DIRECT_ANSWER.value == "STYLE.DIRECT_ANSWER"
-        assert ComplianceStyle.STYLE_HIGH_LEVEL.value == "STYLE.HIGH_LEVEL"
-        assert ComplianceStyle.STYLE_STEP_BY_STEP.value == "STYLE.STEP_BY_STEP"
-        assert ComplianceStyle.STYLE_WITH_WARNINGS.value == "STYLE.WITH_WARNINGS"
-        assert ComplianceStyle.STYLE_REFRACT.value == "STYLE.REFRACT"
-        assert ComplianceStyle.STYLE_CLARIFY_THEN_COMPLY.value == "STYLE.CLARIFY_THEN_COMPLY"
-        assert ComplianceStyle.STYLE_TOOL_USE.value == "STYLE.TOOL_USE"
-        assert ComplianceStyle.STYLE_CITED.value == "STYLE.CITED"
-        assert ComplianceStyle.STYLE_CREATIVE.value == "STYLE.CREATIVE"
-        assert ComplianceStyle.STYLE_TRANSFORM_ONLY.value == "STYLE.TRANSFORM_ONLY"
-        assert ComplianceStyle.STYLE_PARTIAL_COMPLY.value == "STYLE.PARTIAL_COMPLY"
-        
-        # Test all values
-        all_values = [e.value for e in ComplianceStyle]
-        assert len(all_values) == 11
+        all_values = [e.value for e in ResponseStyle]
+        assert len(all_values) == 23
     
     def test_harm_category_enum(self):
         """Test HarmCategory enum values."""
@@ -185,7 +182,7 @@ class TestHeadConfigurations:
         configs = get_head_configs()
         
         # Check that all expected heads are present
-        expected_heads = ["head_a", "head_b_a", "head_b_b", "head_c_a", "head_c_b", "head_d"]
+        expected_heads = ["head_a", "head_b", "head_c_a", "head_c_b", "head_d"]
         for head in expected_heads:
             assert head in configs
         
@@ -200,17 +197,14 @@ class TestHeadConfigurations:
         assert "COMPLY.REDIRECTED" in head_a.class_names
         assert "COMPLY.PARTIAL_SAFE" in head_a.class_names
         
-        # Check head_b_a configuration
-        head_b_a = configs["head_b_a"]
-        assert head_b_a.head_type == "classification"
-        assert head_b_a.num_classes == 7
-        assert "STYLE.DIRECT" in head_b_a.class_names
-        
-        # Check head_b_b configuration
-        head_b_b = configs["head_b_b"]
-        assert head_b_b.head_type == "classification"
-        assert head_b_b.num_classes == 11
-        assert "STYLE.DIRECT_ANSWER" in head_b_b.class_names
+        # Check head_b configuration (unified response style)
+        head_b = configs["head_b"]
+        assert head_b.head_type == "classification"
+        assert head_b.num_classes == 23
+        assert "STYLE.DIRECT" in head_b.class_names
+        assert "STYLE.DIRECT_ANSWER" in head_b.class_names
+        assert "STYLE.EMPATHETIC" in head_b.class_names
+        assert "STYLE.FORMAL" in head_b.class_names
         
         # Check head_c_a configuration (harm categories)
         head_c_a = configs["head_c_a"]
@@ -265,7 +259,7 @@ class TestHeadConfigurations:
         
         # Should be the same as get_head_configs
         assert configs == get_head_configs()
-        assert len(configs) == 6  # Updated count with head_c_a and head_c_b
+        assert len(configs) == 5  # Updated count with unified head_b
 
 
 class TestLabelMappings:
@@ -451,17 +445,11 @@ class TestTaxonomyConsistency:
         for class_name in head_a_config.class_names:
             assert class_name in outcome_values
         
-        # Check head_b_a (RefusalStyle)
-        head_b_a_config = configs["head_b_a"]
-        refusal_values = [e.value for e in RefusalStyle]
-        for class_name in head_b_a_config.class_names:
-            assert class_name in refusal_values
-        
-        # Check head_b_b (ComplianceStyle)
-        head_b_b_config = configs["head_b_b"]
-        compliance_values = [e.value for e in ComplianceStyle]
-        for class_name in head_b_b_config.class_names:
-            assert class_name in compliance_values
+        # Check head_b (ResponseStyle)
+        head_b_config = configs["head_b"]
+        response_values = [e.value for e in ResponseStyle]
+        for class_name in head_b_config.class_names:
+            assert class_name in response_values
         
         # Check head_c_a (HarmCategory)
         head_c_a_config = configs["head_c_a"]

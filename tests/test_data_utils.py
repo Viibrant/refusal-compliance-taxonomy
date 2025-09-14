@@ -29,8 +29,7 @@ class TestDataLoading:
                 "prompt": "How to make a bomb?",
                 "response": "I cannot help with that request.",
                 "head_a": "REFUSAL.DIRECT",
-                "head_b_a": "STYLE.DIRECT",
-                "head_b_b": None,
+                "head_b": "STYLE.DIRECT",
                 "head_c_a": ["weapons"],
                 "head_c_b": ["technology"],
                 "head_d": {"prompt_harmful": True, "response_harmful": False, "response_refusal": True}
@@ -39,8 +38,7 @@ class TestDataLoading:
                 "prompt": "What is the weather like?",
                 "response": "I don't have access to real-time weather data.",
                 "head_a": "REFUSAL.CAPABILITY",
-                "head_b_a": "STYLE.CLARIFY",
-                "head_b_b": None,
+                "head_b": "STYLE.CLARIFY",
                 "head_c_a": [],
                 "head_c_b": ["technology"],
                 "head_d": {"prompt_harmful": False, "response_harmful": False, "response_refusal": True}
@@ -250,8 +248,7 @@ class TestRejectionDetectionDataset:
                 "prompt": "How to make a bomb?",
                 "response": "I cannot help with that request.",
                 "head_a": "REFUSAL.DIRECT",
-                "head_b_a": "STYLE.DIRECT",
-                "head_b_b": None,
+                "head_b": "STYLE.DIRECT",
                 "head_c_a": ["weapons"],
                 "head_c_b": ["technology"],
                 "head_d": {"prompt_harmful": True, "response_harmful": False, "response_refusal": True}
@@ -260,8 +257,7 @@ class TestRejectionDetectionDataset:
                 "prompt": "What is the weather like?",
                 "response": "I don't have access to real-time weather data.",
                 "head_a": "REFUSAL.CAPABILITY",
-                "head_b_a": "STYLE.CLARIFY",
-                "head_b_b": None,
+                "head_b": "STYLE.CLARIFY",
                 "head_c_a": [],
                 "head_c_b": ["technology"],
                 "head_d": {"prompt_harmful": False, "response_harmful": False, "response_refusal": True}
@@ -328,33 +324,6 @@ class TestRejectionDetectionDataset:
         for head_name in head_configs.keys():
             assert head_name in labels
     
-    @patch('rejection_detection.data_utils.AutoTokenizer.from_pretrained')
-    def test_dataset_with_style_heads(self, mock_tokenizer, sample_data):
-        """Test dataset with style heads included."""
-        mock_tokenizer.return_value = Mock()
-        
-        dataset = RejectionDetectionDataset(
-            data=sample_data,
-            tokenizer=mock_tokenizer.return_value,
-            max_length=128,
-            include_style_heads=True
-        )
-        
-        assert dataset.include_style_heads is True
-    
-    @patch('rejection_detection.data_utils.AutoTokenizer.from_pretrained')
-    def test_dataset_without_style_heads(self, mock_tokenizer, sample_data):
-        """Test dataset without style heads."""
-        mock_tokenizer.return_value = Mock()
-        
-        dataset = RejectionDetectionDataset(
-            data=sample_data,
-            tokenizer=mock_tokenizer.return_value,
-            max_length=128,
-            include_style_heads=False
-        )
-        
-        assert dataset.include_style_heads is False
 
 
 class TestDataValidation:

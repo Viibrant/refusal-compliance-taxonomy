@@ -334,9 +334,9 @@ The final dataset follows this schema:
   "prompt": "User's input prompt",
   "response": "Model's response",
   "head_a": "REFUSAL.DIRECT",           // Outcome classification
-  "head_b_a": "STYLE.DIRECT",           // Refusal style (if refusal)
-  "head_b_b": "STYLE.DIRECT_ANSWER",    // Compliance style (if compliance)
-  "head_c": ["weapons", "violence"],    // Harm categories (multilabel)
+  "head_b": "STYLE.DIRECT",             // Response style (unified)
+  "head_c_a": ["weapons", "violence"],  // Harm categories (multilabel)
+  "head_c_b": ["technology", "other"],  // Harmless topic categories (multilabel)
   "head_d": {                           // Safety flags (boolean)
     "prompt_harmful": true,
     "response_harmful": false,
@@ -510,9 +510,9 @@ dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
 for batch in dataloader:
     # batch contains all 5 heads
     # batch["labels"]["head_a"] - outcome labels
-    # batch["labels"]["head_b_a"] - refusal style labels
-    # batch["labels"]["head_b_b"] - compliance style labels
-    # batch["labels"]["head_c"] - category labels
+    # batch["labels"]["head_b"] - response style labels (unified)
+    # batch["labels"]["head_c_a"] - harm category labels
+    # batch["labels"]["head_c_b"] - harmless topic category labels
     # batch["labels"]["head_d"] - safety flag labels
     pass
 ```

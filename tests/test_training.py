@@ -245,7 +245,9 @@ class TestMultiHeadTrainer:
         # Mock forward method to return proper outputs
         mock_model.forward.return_value = {
             "head_a": torch.tensor([[0.8, 0.2]]),
-            "head_c": torch.tensor([[0.9, 0.1, 0.2]]),
+            "head_b": torch.tensor([[0.9, 0.1, 0.2]]),
+            "head_c_a": torch.tensor([[0.9, 0.1, 0.2]]),
+            "head_c_b": torch.tensor([[0.9, 0.1, 0.2]]),
             "head_d": torch.tensor([[0.7, 0.3, 0.6]])
         }
         mock_model_class.return_value = mock_model
@@ -260,7 +262,9 @@ class TestMultiHeadTrainer:
         # Ensure the model's forward method returns the expected outputs
         trainer.model.forward.return_value = {
             "head_a": torch.tensor([[0.8, 0.2]]),
-            "head_c": torch.tensor([[0.9, 0.1, 0.2]]),
+            "head_b": torch.tensor([[0.9, 0.1, 0.2]]),
+            "head_c_a": torch.tensor([[0.9, 0.1, 0.2]]),
+            "head_c_b": torch.tensor([[0.9, 0.1, 0.2]]),
             "head_d": torch.tensor([[0.7, 0.3, 0.6]])
         }
         
@@ -271,7 +275,9 @@ class TestMultiHeadTrainer:
                 "attention_mask": torch.tensor([[1, 1, 1]]),
                 "labels": {
                     "head_a": torch.tensor([0]),
-                    "head_c": torch.tensor([[1, 0, 0]]),
+                    "head_b": torch.tensor([0]),
+                    "head_c_a": torch.tensor([[1, 0, 0]]),
+                    "head_c_b": torch.tensor([[1, 0, 0]]),
                     "head_d": torch.tensor([[1, 0, 1]])
                 }
             }
@@ -282,8 +288,7 @@ class TestMultiHeadTrainer:
             mock_evaluate.return_value = {
                 "eval_loss": 0.5,
                 "eval_head_a_loss": 0.3,
-                "eval_head_b_a_loss": 0.2,
-                "eval_head_b_b_loss": 0.2,
+                "eval_head_b_loss": 0.2,
                 "eval_head_c_a_loss": 0.2,
                 "eval_head_c_b_loss": 0.2,
                 "eval_head_d_loss": 0.1

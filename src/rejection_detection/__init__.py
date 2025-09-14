@@ -19,8 +19,7 @@ from .taxonomies import (
     get_label_to_id_mapping,
     get_id_to_label_mapping,
     OutcomeType,
-    RefusalStyle,
-    ComplianceStyle,
+    ResponseStyle,
     HarmCategory,
 )
 from .inference import load_trained_model, predict_single, predict_batch
@@ -92,7 +91,6 @@ def main() -> None:
     train_parser.add_argument("--loss_weights", type=str, help="Loss weights JSON")
     train_parser.add_argument("--num_workers", type=int, default=0, help="Number of workers")
     train_parser.add_argument("--seed", type=int, default=42, help="Random seed")
-    train_parser.add_argument("--include_style_heads", action="store_true", default=True, help="Include style heads")
     
     # Predict command
     predict_parser = subparsers.add_parser("predict", help="Make predictions")

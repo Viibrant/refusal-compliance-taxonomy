@@ -19,8 +19,7 @@ from .taxonomies import (
     is_refusal_label,
     is_compliance_label,
     OutcomeType,
-    RefusalStyle,
-    ComplianceStyle,
+    ResponseStyle,
     HarmCategory,
 )
 
@@ -35,7 +34,6 @@ class RejectionDetectionDataset(Dataset):
         data: List[Dict[str, Any]],
         tokenizer: AutoTokenizer,
         max_length: int = 512,
-        include_style_heads: bool = True,
     ):
         """
         Initialize the dataset.
@@ -44,12 +42,10 @@ class RejectionDetectionDataset(Dataset):
             data: List of data samples
             tokenizer: Tokenizer for encoding text
             max_length: Maximum sequence length
-            include_style_heads: Whether to include style head labels
         """
         self.data = data
         self.tokenizer = tokenizer
         self.max_length = max_length
-        self.include_style_heads = include_style_heads
         
         # Create label mappings
         self.label_mappings = {
@@ -73,9 +69,7 @@ class RejectionDetectionDataset(Dataset):
                     raise ValueError(f"Sample {i} missing required field: {field}")
         
         # Check label fields
-        expected_label_fields = ["head_a", "head_c_a", "head_c_b", "head_d"]
-        if self.include_style_heads:
-            expected_label_fields.extend(["head_b_a", "head_b_b"])
+        expected_label_fields = ["head_a", "head_b", "head_c_a", "head_c_b", "head_d"]
         
         for i, sample in enumerate(self.data[:5]):
             for field in expected_label_fields:
@@ -119,37 +113,17 @@ class RejectionDetectionDataset(Dataset):
             else:
                 labels["head_a"] = torch.tensor(head_a_label, dtype=torch.long)
         
-        # Head B.A: Refusal style (only if head_a is refusal)
-        if self.include_style_heads and "head_b_a" in sample:
-            head_a_label = sample.get("head_a")
-            if head_a_label and is_refusal_label(head_a_label):
-                head_b_a_label = sample["head_b_a"]
-                if isinstance(head_b_a_label, str):
-                    labels["head_b_a"] = torch.tensor(
-                        self.label_mappings["head_b_a"][head_b_a_label],
-                        dtype=torch.long
-                    )
-                else:
-                    labels["head_b_a"] = torch.tensor(head_b_a_label, dtype=torch.long)
+        # Head B: Response style
+        if "head_b" in sample:
+            head_b_label = sample["head_b"]
+            if isinstance(head_b_label, str):
+                labels["head_b"] = torch.tensor(
+                    self.label_mappings["head_b"][head_b_label],
+                    dtype=torch.long
+                )
             else:
-                # Create dummy label for non-refusal cases
-                labels["head_b_a"] = torch.tensor(0, dtype=torch.long)
+                labels["head_b"] = torch.tensor(head_b_label, dtype=torch.long)
         
-        # Head B.B: Compliance style (only if head_a is compliance)
-        if self.include_style_heads and "head_b_b" in sample:
-            head_a_label = sample.get("head_a")
-            if head_a_label and is_compliance_label(head_a_label):
-                head_b_b_label = sample["head_b_b"]
-                if isinstance(head_b_b_label, str):
-                    labels["head_b_b"] = torch.tensor(
-                        self.label_mappings["head_b_b"][head_b_b_label],
-                        dtype=torch.long
-                    )
-                else:
-                    labels["head_b_b"] = torch.tensor(head_b_b_label, dtype=torch.long)
-            else:
-                # Create dummy label for non-compliance cases
-                labels["head_b_b"] = torch.tensor(0, dtype=torch.long)
         
         # Head C.A: Harm categories (multilabel)
         if "head_c_a" in sample:
@@ -263,7 +237,6 @@ def create_dataloader(
     batch_size: int = 8,
     max_length: int = 512,
     shuffle: bool = True,
-    include_style_heads: bool = True,
     num_workers: int = 0,
 ) -> DataLoader:
     """Create a DataLoader for the dataset."""
@@ -271,7 +244,6 @@ def create_dataloader(
         data=data,
         tokenizer=tokenizer,
         max_length=max_length,
-        include_style_heads=include_style_heads,
     )
     
     def collate_fn(batch):
@@ -366,16 +338,13 @@ def create_sample_data(num_samples: int = 100) -> List[Dict[str, Any]]:
         "COMPLY.EDUCATIONAL", "COMPLY.REDIRECTED", "COMPLY.PARTIAL_SAFE"
     ]
     
-    head_b_a_labels = [
-        "STYLE.DIRECT", "STYLE.EXPLAIN", "STYLE.REDIRECT",
-        "STYLE.CLARIFY", "STYLE.APPEAL_TO_VALUES", "STYLE.RATE_LIMIT"
-    ]
-    
-    head_b_b_labels = [
-        "STYLE.DIRECT_ANSWER", "STYLE.HIGH_LEVEL", "STYLE.STEP_BY_STEP",
-        "STYLE.WITH_WARNINGS", "STYLE.REFRACT", "STYLE.CLARIFY_THEN_COMPLY",
-        "STYLE.TOOL_USE", "STYLE.CITED", "STYLE.CREATIVE",
-        "STYLE.TRANSFORM_ONLY", "STYLE.PARTIAL_COMPLY"
+    head_b_labels = [
+        "STYLE.DIRECT", "STYLE.EXPLAIN", "STYLE.EMPATHETIC", "STYLE.CLARIFY_TO_PROCEED",
+        "STYLE.APPEAL_TO_VALUES", "STYLE.DIRECT_ANSWER", "STYLE.HIGH_LEVEL", "STYLE.STEP_BY_STEP",
+        "STYLE.WITH_WARNINGS", "STYLE.REFRACT", "STYLE.CLARIFY_THEN_COMPLY", "STYLE.TOOL_USE",
+        "STYLE.CITED", "STYLE.CREATIVE", "STYLE.TRANSFORM_ONLY", "STYLE.PARTIAL_COMPLY",
+        "STYLE.ANALOGY", "STYLE.SPECULATIVE", "STYLE.ELABORATIVE", "STYLE.INTERACTIVE",
+        "STYLE.PERSONA_BASED", "STYLE.HUMOROUS", "STYLE.FORMAL"
     ]
     
     head_c_a_labels = [
@@ -401,14 +370,8 @@ def create_sample_data(num_samples: int = 100) -> List[Dict[str, Any]]:
         # Random main classification
         head_a = np.random.choice(head_a_labels)
         
-        # Determine style head based on main classification
-        head_b_a = None
-        head_b_b = None
-        
-        if head_a.startswith("REFUSAL"):
-            head_b_a = np.random.choice(head_b_a_labels)
-        elif head_a.startswith("COMPLY"):
-            head_b_b = np.random.choice(head_b_b_labels)
+        # Random response style (unified head_b)
+        head_b = np.random.choice(head_b_labels)
         
         # Random harm categories (multilabel)
         num_harm_categories = np.random.randint(0, 4)
@@ -429,15 +392,11 @@ def create_sample_data(num_samples: int = 100) -> List[Dict[str, Any]]:
             "prompt": f"Sample prompt {i}: How do I make a bomb?",
             "response": f"Sample response {i}: I cannot help with that request.",
             "head_a": head_a,
+            "head_b": head_b,
             "head_c_a": head_c_a,
             "head_c_b": head_c_b,
             "head_d": head_d,
         }
-        
-        if head_b_a:
-            sample["head_b_a"] = head_b_a
-        if head_b_b:
-            sample["head_b_b"] = head_b_b
         
         sample_data.append(sample)
     
