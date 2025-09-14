@@ -1,17 +1,10 @@
 # Methodology
 
-## 0) Purpose
+This file explains how to scout datasets, decide if they’re usable, and record them so they plug into the taxonomy.
 
-Normalise arbitrary text datasets into our multi-head taxonomy (behaviour vs risk) quickly and reproducibly. This file tells you:
+## 1) Usability checks
 
-- what to look for,
-- how to decide if a dataset is useful,
-- how to map it into our heads,
-- where to put the artefacts.
-
-Filled cards live in `docs/datasets/`. Blank templates are in `docs/templates/`.
-
-## 1) Acceptance criteria (quick gates)
+When you come across a dataset, the first step is to decide if it’s usable. If a dataset fails any of these checks, drop it immediately.
 
 **Hard gates — reject if any fails**
 
@@ -25,9 +18,9 @@ Filled cards live in `docs/datasets/`. Blank templates are in `docs/templates/`.
 - Adversarial features (slang, obfuscation, multilingual) or benign **near-boundary** prompts.
 - Granular harm categories; diverse benign domains.
 
-## 2) Where to look (domain families → coverage)
+## 2) Where to look
 
-Hunt **sources**, not specific benchmarks.
+Here are some domains that are likely to contain useful datasets. We care about domain coverage, not leaderboard scores.
 
 - **Illicit behaviour & cyber** → `head_c_a: cybercrime / fraud / dangerous_activities`
 - **Violence / extremism / hate** → `hate_harassment / extremism / violence`
@@ -38,9 +31,9 @@ Hunt **sources**, not specific benchmarks.
 - **Tool-dependent QA** (web/RAG/code exec) → `REFUSAL.CAPABILITY`
 - **Dialogue with declines/triage** → refusal **styles** (`STYLE.*`)
 
-## 3) How to scout (repeatable, quick)
+## 3) How to scout
 
-Use these patterns (mix terms):
+Use quick searches with common keywords and filters. Here are some patterns (mix terms):
 
 - `"<domain> dataset"  (classification|annotation|dialogue|qa)`
 - `"dataset license"  (cc-by|mit|apache|odc)`
@@ -50,7 +43,9 @@ Use these patterns (mix terms):
 
 Skim each hit for **fields**, **labels**, **licence**. If it can fill ≥1 head, make a card.
 
-## 4) What to extract (artefacts, no code)
+## 4) What to capture
+
+Once you’ve found a dataset worth keeping, capture its key facts in a card so it stays consistent with the rest of the repo.
 
 Create a **Dataset Card** in `docs/datasets/` from `docs/templates/dataset_card.md`:
 
@@ -65,6 +60,8 @@ Create a **Dataset Card** in `docs/datasets/` from `docs/templates/dataset_card.
 If mapping is non-trivial, add `docs/templates/mapping_plan.md` alongside the card.
 
 ## 5) Mapping recipe (deterministic, head-by-head)
+
+Once a dataset passes the gates and you’ve filled out a card, the next step is to map its labels into our taxonomy. Most datasets already give you some structure (like refusal yes/no or harm categories). Use §5.1 to route those directly. If you only have raw prompts and responses with no labels, fall back to §5.2 - deterministic annotation rules for backfilling outcomes consistently.
 
 ### 5.1 Quick router — “dataset provides X → populate Y”
 
@@ -81,7 +78,7 @@ Use this when a dataset already provides structured labels (refusal yes/no, harm
 
 ### 5.2 Outcome precedence (apply top-down)
 
-Only use this when a dataset has raw responses with no labels. These rules tell you how to consistently backfill `head_a` (outcome) and related styles by reading the text. Think of it as deterministic annotation, not scouting.
+Use this only for raw responses with no labels. These rules tell you how to consistently backfill `head_a` (outcome) and related styles by reading the text. These rules are for annotation, not for finding datasets.
 
 1. If `response_harmful` → `COMPLY.UNSAFE`.
 2. Else if `response_refusal`:
@@ -114,12 +111,16 @@ These are lexical patterns and phrasings you can look for when deriving labels f
 
 ## 6) Safety & redaction (minimum policy)
 
+Even if a dataset passes the gates, you need to strip or mask anything that would make redistribution unsafe.
+
 - **No actionable methods** for weapons/biothreats/cyber-intrusion/illegal drug synthesis. Keep contexts or **transform-only** tasks.
 - **Self-harm**: allow empathetic refusals; remove methods or replace with `[REDACTED_STEP]`.
 - **Sexual content**: exclude explicit porn; keep only metadata or PG-13 paraphrases for policy classification.
 - **PII**: mask with typed placeholders (`<PERSON>`, `<EMAIL>`, `<ADDRESS>`, `<PHONE>`). Never republish raw PII in cards/examples.
 
 ## 7) Repo hygiene, governance & naming
+
+Keep the repo tidy and predictable: cards, templates, and names should follow strict conventions.
 
 - **Where things go**
 
@@ -149,6 +150,8 @@ Source of truth for labels is [docs/TAXONOMY.md](TAXONOMY.md).
 
 ## 8) Quality gates & provenance (must pass)
 
+Before a card is marked validated, check the invariants and provenance so nothing slips through.
+
 **Record-level invariants**
 
 - If `response_harmful == true` ⇒ `head_a == COMPLY.UNSAFE`.
@@ -163,6 +166,8 @@ Source of truth for labels is [docs/TAXONOMY.md](TAXONOMY.md).
 Fail any of the above → don’t mark the card **validated**.
 
 ## 9) Evaluation & coverage policy
+
+We need balanced splits and domain coverage, not just raw volume. These rules keep training and eval meaningful.
 
 - **Holdouts**
 
