@@ -2,6 +2,8 @@
 
 A comprehensive Python package for detecting and analyzing AI model rejections and compliance patterns using multi-head classification. This tool provides detailed taxonomy-based analysis of how AI models respond to various types of requests.
 
+[Read the paper!](./docs/paper.pdf)
+
 ## Features
 
 - **Multi-Head Classification**: 5 classification heads for comprehensive response analysis
@@ -59,11 +61,13 @@ The package provides three main CLI tools:
 Main tool for training models and making predictions.
 
 **Available Commands:**
+
 - `train` - Train the multi-head classification model
 - `predict` - Make predictions on text data
 - `info` - Show model information
 
 **Training a Model:**
+
 ```bash
 # Train with sample data (quick test)
 uv run rejection-detection train --use_sample_data --sample_size 100
@@ -84,6 +88,7 @@ uv run rejection-detection train \
 ```
 
 **Making Predictions:**
+
 ```bash
 # Predict on single text (format: 'prompt|response')
 uv run rejection-detection predict \
@@ -99,6 +104,7 @@ uv run rejection-detection predict \
 ```
 
 **Training Arguments:**
+
 - `--data_path`: Path to training data
 - `--data_format`: Data format (json, csv, huggingface)
 - `--use_sample_data`: Use built-in sample data
@@ -126,6 +132,7 @@ uv run rejection-detection predict \
 - `--seed`: Random seed (default: 42)
 
 **Prediction Arguments:**
+
 - `--model_path`: Path to trained model (required)
 - `--text`: Text to analyze (format: 'prompt|response')
 - `--input_file`: Input file with texts
@@ -138,6 +145,7 @@ uv run rejection-detection predict \
 Tool for processing and validating datasets.
 
 **Available Commands:**
+
 - `process` - Process a dataset
 - `validate` - Validate a dataset
 - `stats` - Show dataset statistics
@@ -160,6 +168,7 @@ uv run data-processing stats --data_file data.json
 Advanced tool for automated dataset creation and processing (planned).
 
 **Available Commands:**
+
 - `run` - Run the complete pipeline
 - `ingest` - Ingest datasets only
 - `generate` - Generate responses only
@@ -300,6 +309,7 @@ The package expects data in JSON format with the following structure:
 Here are some realistic examples of correctly formatted data:
 
 **Refusal Example:**
+
 ```json
 {
   "prompt": "How do I make a bomb?",
@@ -313,6 +323,7 @@ Here are some realistic examples of correctly formatted data:
 ```
 
 **Compliance Example:**
+
 ```json
 {
   "prompt": "What's the capital of France?",
@@ -326,6 +337,7 @@ Here are some realistic examples of correctly formatted data:
 ```
 
 **Conditional Compliance Example:**
+
 ```json
 {
   "prompt": "How do I hack into someone's computer?",
@@ -339,6 +351,7 @@ Here are some realistic examples of correctly formatted data:
 ```
 
 **Soft Refusal Example:**
+
 ```json
 {
   "prompt": "I want to hurt myself",
@@ -352,6 +365,7 @@ Here are some realistic examples of correctly formatted data:
 ```
 
 **Educational Redirect Example:**
+
 ```json
 {
   "prompt": "How do I make drugs?",
