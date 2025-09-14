@@ -101,9 +101,9 @@ class MultiHeadClassifier(nn.Module):
         attention_mask: torch.Tensor,
         token_type_ids: Optional[torch.Tensor] = None,
         head_a_labels: Optional[torch.Tensor] = None,
-        head_b_a_labels: Optional[torch.Tensor] = None,
-        head_b_b_labels: Optional[torch.Tensor] = None,
-        head_c_labels: Optional[torch.Tensor] = None,
+        head_b_labels: Optional[torch.Tensor] = None,
+        head_c_a_labels: Optional[torch.Tensor] = None,
+        head_c_b_labels: Optional[torch.Tensor] = None,
         head_d_labels: Optional[torch.Tensor] = None,
     ) -> Dict[str, torch.Tensor]:
         """
@@ -114,9 +114,9 @@ class MultiHeadClassifier(nn.Module):
             attention_mask: Attention mask
             token_type_ids: Token type IDs (for BERT)
             head_a_labels: Labels for head A (optional, for training)
-            head_b_a_labels: Labels for head B.A (optional, for training)
-            head_b_b_labels: Labels for head B.B (optional, for training)
-            head_c_labels: Labels for head C (optional, for training)
+            head_b_labels: Labels for head B (optional, for training)
+            head_c_a_labels: Labels for head C.A (optional, for training)
+            head_c_b_labels: Labels for head C.B (optional, for training)
             head_d_labels: Labels for head D (optional, for training)
             
         Returns:
@@ -159,38 +159,20 @@ class MultiHeadClassifier(nn.Module):
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor,
         token_type_ids: Optional[torch.Tensor] = None,
-        head_a_prediction: Optional[torch.Tensor] = None,
     ) -> Dict[str, torch.Tensor]:
         """
-        Get outputs from all heads, with conditional logic for style heads.
+        Get outputs from all heads.
         
         Args:
             input_ids: Token IDs
             attention_mask: Attention mask
             token_type_ids: Token type IDs
-            head_a_prediction: Predicted labels from head A (for conditional heads)
             
         Returns:
             Dictionary containing outputs for each head
         """
         # Get base outputs
         outputs = self.forward(input_ids, attention_mask, token_type_ids)
-        
-        # Apply conditional logic for style heads
-        if head_a_prediction is not None:
-            # Determine which style head to use based on head A prediction
-            batch_size = head_a_prediction.size(0)
-            
-            # Create masks for refusal and compliance
-            refusal_mask = self._is_refusal_prediction(head_a_prediction)
-            compliance_mask = self._is_compliance_prediction(head_a_prediction)
-            
-            # Zero out inappropriate style head outputs
-            if "head_b_a" in outputs:
-                outputs["head_b_a"] = outputs["head_b_a"] * refusal_mask.unsqueeze(-1)
-            if "head_b_b" in outputs:
-                outputs["head_b_b"] = outputs["head_b_b"] * compliance_mask.unsqueeze(-1)
-        
         return outputs
     
     def _is_refusal_prediction(self, predictions: torch.Tensor) -> torch.Tensor:
@@ -275,9 +257,9 @@ class MultiHeadLoss(nn.Module):
         
         self.loss_weights = loss_weights or {
             "head_a": 1.0,
-            "head_b_a": 0.5,
-            "head_b_b": 0.5,
-            "head_c": 1.0,
+            "head_b": 1.0,
+            "head_c_a": 1.0,
+            "head_c_b": 1.0,
             "head_d": 1.0,
         }
         
@@ -289,7 +271,6 @@ class MultiHeadLoss(nn.Module):
         self,
         outputs: Dict[str, torch.Tensor],
         labels: Dict[str, torch.Tensor],
-        head_a_predictions: Optional[torch.Tensor] = None,
     ) -> Dict[str, torch.Tensor]:
         """
         Compute loss for all heads.
@@ -297,7 +278,6 @@ class MultiHeadLoss(nn.Module):
         Args:
             outputs: Model outputs for each head
             labels: Ground truth labels for each head
-            head_a_predictions: Predictions from head A (for conditional losses)
             
         Returns:
             Dictionary containing losses for each head
@@ -319,44 +299,8 @@ class MultiHeadLoss(nn.Module):
                 # Single-label cross-entropy
                 loss = self.ce_loss(logits, head_labels)
             
-            # Apply conditional logic for style heads
-            if head_name in ["head_b_a", "head_b_b"] and head_a_predictions is not None:
-                # Only compute loss for appropriate cases
-                if head_name == "head_b_a":
-                    # Only for refusal cases
-                    mask = self._is_refusal_prediction(head_a_predictions)
-                else:  # head_b_b
-                    # Only for compliance cases
-                    mask = self._is_compliance_prediction(head_a_predictions)
-                
-                if mask.sum() > 0:
-                    loss = loss * mask.float().mean()
-                else:
-                    loss = torch.tensor(0.0, device=loss.device, requires_grad=True)
-            
             losses[head_name] = loss
             total_loss += self.loss_weights.get(head_name, 1.0) * loss
         
         losses["total"] = total_loss
         return losses
-    
-    def _is_refusal_prediction(self, predictions: torch.Tensor) -> torch.Tensor:
-        """Check if predictions are refusal types."""
-        # Get refusal indices dynamically from taxonomy
-        from .taxonomies import OutcomeType
-        refusal_types = [OutcomeType.REFUSAL_DIRECT, OutcomeType.REFUSAL_SOFT, 
-                        OutcomeType.REFUSAL_PARTIAL, OutcomeType.REFUSAL_CAPABILITY, 
-                        OutcomeType.REFUSAL_OVER]
-        refusal_indices = [list(OutcomeType).index(t) for t in refusal_types]
-        return torch.isin(predictions, torch.tensor(refusal_indices, device=predictions.device))
-    
-    def _is_compliance_prediction(self, predictions: torch.Tensor) -> torch.Tensor:
-        """Check if predictions are compliance types."""
-        # Get compliance indices dynamically from taxonomy
-        from .taxonomies import OutcomeType
-        compliance_types = [OutcomeType.COMPLY_BENIGN, OutcomeType.COMPLY_UNSAFE, 
-                           OutcomeType.COMPLY_TRANSFORM, OutcomeType.COMPLY_CONDITIONAL,
-                           OutcomeType.COMPLY_EDUCATIONAL, OutcomeType.COMPLY_REDIRECTED,
-                           OutcomeType.COMPLY_PARTIAL_SAFE]
-        compliance_indices = [list(OutcomeType).index(t) for t in compliance_types]
-        return torch.isin(predictions, torch.tensor(compliance_indices, device=predictions.device))

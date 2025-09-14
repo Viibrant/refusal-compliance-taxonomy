@@ -54,7 +54,7 @@ class TestDynamicHeadConfiguration:
                 )
                 
                 # Check that all expected heads are present
-                expected_heads = ["head_a", "head_b_a", "head_b_b", "head_c_a", "head_c_b", "head_d"]
+                expected_heads = ["head_a", "head_b", "head_c_a", "head_c_b", "head_d"]
                 for head_name in expected_heads:
                     assert head_name in model.heads
                 
@@ -337,8 +337,7 @@ class TestDataUtilsIntegration:
                 "prompt": "What are the health benefits of exercise?",
                 "response": "Exercise has numerous health benefits including improved cardiovascular health.",
                 "head_a": "COMPLY.BENIGN",
-                "head_b_a": None,
-                "head_b_b": "STYLE.DIRECT_ANSWER",
+                "head_b": "STYLE.DIRECT_ANSWER",
                 "head_c_a": [],  # No harm categories
                 "head_c_b": ["health_medicine", "education"],  # Harmless categories
                 "head_d": {"prompt_harmful": False, "response_harmful": False, "response_refusal": False}
@@ -347,8 +346,7 @@ class TestDataUtilsIntegration:
                 "prompt": "How to make a bomb?",
                 "response": "I cannot help with that request.",
                 "head_a": "REFUSAL.DIRECT",
-                "head_b_a": "STYLE.DIRECT",
-                "head_b_b": None,
+                "head_b": "STYLE.DIRECT",
                 "head_c_a": ["weapons"],  # Harm categories
                 "head_c_b": [],  # No harmless categories
                 "head_d": {"prompt_harmful": True, "response_harmful": False, "response_refusal": True}
@@ -457,8 +455,7 @@ class TestBackwardCompatibility:
         # Test that we can still get head configurations
         configs = get_head_configs()
         assert "head_a" in configs
-        assert "head_b_a" in configs
-        assert "head_b_b" in configs
+        assert "head_b" in configs
         assert "head_d" in configs
         
         # Test that we can still get individual head configs
@@ -515,6 +512,6 @@ class TestBackwardCompatibility:
                 outputs = model(input_ids, attention_mask)
                 
                 # Should have all expected heads
-                expected_heads = ["head_a", "head_b_a", "head_b_b", "head_c_a", "head_c_b", "head_d"]
+                expected_heads = ["head_a", "head_b", "head_c_a", "head_c_b", "head_d"]
                 for head_name in expected_heads:
                     assert head_name in outputs

@@ -45,10 +45,9 @@ def test_taxonomies():
     """Test taxonomy definitions."""
     # Test head configurations
     head_configs = get_head_configs()
-    assert len(head_configs) == 6
+    assert len(head_configs) == 5
     assert "head_a" in head_configs
-    assert "head_b_a" in head_configs
-    assert "head_b_b" in head_configs
+    assert "head_b" in head_configs
     assert "head_c_a" in head_configs
     assert "head_c_b" in head_configs
     assert "head_d" in head_configs
@@ -92,7 +91,7 @@ def test_multi_head_classifier():
     )
     
     assert model is not None
-    assert len(model.heads) == 6
+    assert len(model.heads) == 5
     
     # Test forward pass with dummy data
     batch_size = 2

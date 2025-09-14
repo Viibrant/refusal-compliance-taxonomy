@@ -83,7 +83,7 @@ class TestMultiHeadClassifier:
         assert model.model_name == "bert-base-uncased"
         assert model.freeze_encoder is True
         assert model.encoder is not None
-        assert len(model.heads) == 6  # All 6 heads (updated with head_c_a and head_c_b)
+        assert len(model.heads) == 5  # All 5 heads (unified head_b)
     
     @patch('rejection_detection.model.AutoModel.from_pretrained')
     @patch('rejection_detection.model.AutoConfig.from_pretrained')
@@ -102,7 +102,7 @@ class TestMultiHeadClassifier:
         )
         
         assert model.freeze_encoder is True
-        assert len(model.heads) == 6  # All 6 heads (updated with head_c_a and head_c_b) (style heads are always included)
+        assert len(model.heads) == 5  # All 5 heads (unified head_b) (style heads are always included)
     
     @patch('rejection_detection.model.AutoModel.from_pretrained')
     @patch('rejection_detection.model.AutoConfig.from_pretrained')

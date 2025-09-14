@@ -281,7 +281,6 @@ def main():
         batch_size=args.batch_size,
         max_length=args.max_length,
         shuffle=True,
-        include_style_heads=args.include_style_heads,
         num_workers=args.num_workers,
     )
     
@@ -291,7 +290,6 @@ def main():
         batch_size=args.batch_size,
         max_length=args.max_length,
         shuffle=False,
-        include_style_heads=args.include_style_heads,
         num_workers=args.num_workers,
     )
     

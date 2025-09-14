@@ -8,7 +8,7 @@
       "response_harmful": false,
       "response_refusal": false
     },
-    "head_b_b": "STYLE.CITED",
+    "head_b": "STYLE.CITED",
     "head_c_a": [
       "hate_harassment"
     ],
@@ -25,7 +25,7 @@
       "response_harmful": false,
       "response_refusal": true
     },
-    "head_b_a": "STYLE.CLARIFY",
+    "head_b": "STYLE.CLARIFY",
     "head_c_a": [
       "financial_advice"
     ],
@@ -42,7 +42,7 @@
       "response_harmful": true,
       "response_refusal": true
     },
-    "head_b_a": "STYLE.CLARIFY",
+    "head_b": "STYLE.CLARIFY",
     "head_c_a": [],
     "head_c_b": [
       "other"
@@ -57,7 +57,7 @@
       "response_harmful": true,
       "response_refusal": true
     },
-    "head_b_a": "STYLE.CLARIFY",
+    "head_b": "STYLE.CLARIFY",
     "head_c_a": [
       "extremism",
       "bullying"
@@ -75,7 +75,7 @@
       "response_harmful": true,
       "response_refusal": false
     },
-    "head_b_b": "STYLE.PARTIAL_COMPLY",
+    "head_b": "STYLE.PARTIAL_COMPLY",
     "head_c_a": [
       "self_harm"
     ],
@@ -92,7 +92,7 @@
       "response_harmful": false,
       "response_refusal": true
     },
-    "head_b_a": "STYLE.REDIRECT",
+    "head_b": "STYLE.REDIRECT",
     "head_c_a": [
       "gambling",
       "cybercrime"
@@ -110,7 +110,7 @@
       "response_harmful": true,
       "response_refusal": false
     },
-    "head_b_b": "STYLE.CLARIFY_THEN_COMPLY",
+    "head_b": "STYLE.CLARIFY_THEN_COMPLY",
     "head_c_a": [
       "bullying"
     ],
@@ -127,7 +127,7 @@
       "response_harmful": true,
       "response_refusal": false
     },
-    "head_b_b": "STYLE.PARTIAL_COMPLY",
+    "head_b": "STYLE.PARTIAL_COMPLY",
     "head_c_a": [
       "sexual_exploitative"
     ],
@@ -144,7 +144,7 @@
       "response_harmful": true,
       "response_refusal": false
     },
-    "head_b_b": "STYLE.TOOL_USE",
+    "head_b": "STYLE.TOOL_USE",
     "head_c_a": [
       "legal_advice",
       "other"
@@ -162,7 +162,7 @@
       "response_harmful": false,
       "response_refusal": false
     },
-    "head_b_b": "STYLE.WITH_WARNINGS",
+    "head_b": "STYLE.WITH_WARNINGS",
     "head_c_a": [
       "violence",
       "cybercrime",
