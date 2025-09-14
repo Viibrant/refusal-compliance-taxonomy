@@ -146,12 +146,14 @@ class TestSinglePrediction:
         # Check result structure
         assert "predictions" in result
         assert "head_a" in result["predictions"]
-        assert "head_c" in result["predictions"]
+        assert "head_c_a" in result["predictions"]
+        assert "head_c_b" in result["predictions"]
         assert "head_d" in result["predictions"]
         
         # Check that predictions are probabilities
         assert 0 <= result["predictions"]["head_a"]["probability"] <= 1
-        assert isinstance(result["predictions"]["head_c"], dict)
+        assert isinstance(result["predictions"]["head_c_a"], dict)
+        assert isinstance(result["predictions"]["head_c_b"], dict)
         assert isinstance(result["predictions"]["head_d"], dict)
     
     def test_predict_single_with_custom_parameters(self, mock_model_and_tokenizer):
@@ -160,7 +162,7 @@ class TestSinglePrediction:
         
         # Test prediction
         result = predict_single(
-            model, tokenizer, 
+            model, tokenizer,
             "How to make a bomb?",
             "I cannot help with that request.",
             max_length=256,
@@ -170,7 +172,8 @@ class TestSinglePrediction:
         # Check result structure
         assert "predictions" in result
         assert "head_a" in result["predictions"]
-        assert "head_c" in result["predictions"]
+        assert "head_c_a" in result["predictions"]
+        assert "head_c_b" in result["predictions"]
         assert "head_d" in result["predictions"]
     
     def test_predict_single_malformed_input(self, mock_model_and_tokenizer):
@@ -249,7 +252,8 @@ class TestBatchPrediction:
         for result in results:
             assert "predictions" in result
             assert "head_a" in result["predictions"]
-            assert "head_c" in result["predictions"]
+            assert "head_c_a" in result["predictions"]
+            assert "head_c_b" in result["predictions"]
             assert "head_d" in result["predictions"]
     
     def test_predict_batch_with_custom_parameters(self, mock_model_and_tokenizer):
@@ -344,7 +348,8 @@ class TestInferenceIntegration:
             # Check result
             assert "predictions" in result
             assert "head_a" in result["predictions"]
-            assert "head_c" in result["predictions"]
+            assert "head_c_a" in result["predictions"]
+            assert "head_c_b" in result["predictions"]
             assert "head_d" in result["predictions"]
             
             # Test batch prediction

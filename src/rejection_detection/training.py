@@ -299,17 +299,71 @@ class MultiHeadTrainer:
                 
                 # Compute per-label metrics
                 try:
-                    precision, recall, f1, _ = precision_recall_fscore_support(
-                        labels_np, preds_binary, average="macro", zero_division=0
-                    )
+                    # Check if we have sufficient class diversity
+                    if labels_np.shape[1] > 1:  # Multiple labels
+                        # Check each label column for class diversity
+                        valid_labels = []
+                        for i in range(labels_np.shape[1]):
+                            unique_classes = np.unique(labels_np[:, i])
+                            if len(unique_classes) > 1:  # More than one class
+                                valid_labels.append(i)
+                        
+                        if valid_labels:
+                            # Only compute metrics for labels with class diversity
+                            precision, recall, f1, _ = precision_recall_fscore_support(
+                                labels_np[:, valid_labels], 
+                                preds_binary[:, valid_labels], 
+                                average="macro", 
+                                zero_division=0
+                            )
+                        else:
+                            # All labels have only one class, compute simple accuracy
+                            accuracy = np.mean(labels_np == preds_binary)
+                            precision = recall = f1 = accuracy
+                    else:
+                        # Single label case
+                        unique_classes = np.unique(labels_np)
+                        if len(unique_classes) > 1:
+                            precision, recall, f1, _ = precision_recall_fscore_support(
+                                labels_np, preds_binary, average="macro", zero_division=0
+                            )
+                        else:
+                            # Only one class, compute simple accuracy
+                            accuracy = np.mean(labels_np == preds_binary)
+                            precision = recall = f1 = accuracy
                 except ValueError as e:
-                    logger.warning(f"Error computing multilabel metrics for {head_name}: {e}")
+                    logger.debug(f"Metrics calculation skipped for {head_name}: {e}")
                     precision = recall = f1 = 0.0
                 
                 # Compute AUC (average across labels)
                 try:
-                    auc = roc_auc_score(labels_np, preds_np, average="macro")
-                except ValueError:
+                    # Check if we have sufficient class diversity for AUC calculation
+                    if labels_np.shape[1] > 1:  # Multiple labels
+                        # Check each label column for class diversity
+                        valid_labels = []
+                        for i in range(labels_np.shape[1]):
+                            unique_classes = np.unique(labels_np[:, i])
+                            if len(unique_classes) > 1:  # More than one class
+                                valid_labels.append(i)
+                        
+                        if valid_labels:
+                            # Only compute AUC for labels with class diversity
+                            auc = roc_auc_score(
+                                labels_np[:, valid_labels], 
+                                preds_np[:, valid_labels], 
+                                average="macro"
+                            )
+                        else:
+                            auc = 0.0
+                    else:
+                        # Single label case
+                        unique_classes = np.unique(labels_np)
+                        if len(unique_classes) > 1:
+                            auc = roc_auc_score(labels_np, preds_np)
+                        else:
+                            auc = 0.0
+                except (ValueError, IndexError) as e:
+                    logger.debug(f"AUC calculation skipped for {head_name}: insufficient class diversity")
                     auc = 0.0
                 
                 metrics[f"{head_name}_precision"] = precision

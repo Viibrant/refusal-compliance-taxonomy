@@ -83,7 +83,7 @@ class TestMultiHeadClassifier:
         assert model.model_name == "bert-base-uncased"
         assert model.freeze_encoder is True
         assert model.encoder is not None
-        assert len(model.heads) == 5  # All 5 heads
+        assert len(model.heads) == 6  # All 6 heads (updated with head_c_a and head_c_b)
     
     @patch('rejection_detection.model.AutoModel.from_pretrained')
     @patch('rejection_detection.model.AutoConfig.from_pretrained')
@@ -102,7 +102,7 @@ class TestMultiHeadClassifier:
         )
         
         assert model.freeze_encoder is True
-        assert len(model.heads) == 5  # All 5 heads (style heads are always included)
+        assert len(model.heads) == 6  # All 6 heads (updated with head_c_a and head_c_b) (style heads are always included)
     
     @patch('rejection_detection.model.AutoModel.from_pretrained')
     @patch('rejection_detection.model.AutoConfig.from_pretrained')
@@ -186,7 +186,8 @@ class TestMultiHeadClassifier:
         
         # Check that outputs are produced
         assert "head_a" in outputs
-        assert "head_c" in outputs
+        assert "head_c_a" in outputs
+        assert "head_c_b" in outputs
         assert "head_d" in outputs
     
     @patch('rejection_detection.model.AutoModel.from_pretrained')
@@ -523,13 +524,13 @@ class TestMultiHeadLoss:
         criterion = MultiHeadLoss()
         
         # Create outputs and labels for multilabel head
-        outputs = {"head_c": torch.sigmoid(torch.randn(2, 27))}  # 27 classes for head_c, sigmoid for [0,1] range
-        labels = {"head_c": torch.randint(0, 2, (2, 27)).float()}
+        outputs = {"head_c_a": torch.sigmoid(torch.randn(2, 27))}  # 27 classes for head_c_a, sigmoid for [0,1] range
+        labels = {"head_c_a": torch.randint(0, 2, (2, 27)).float()}
         
         losses = criterion(outputs, labels)
         
-        assert "head_c" in losses
-        assert losses["head_c"].item() >= 0
+        assert "head_c_a" in losses
+        assert losses["head_c_a"].item() >= 0
         assert "total" in losses
     
     def test_loss_computation_boolean_head(self):
@@ -582,20 +583,22 @@ class TestMultiHeadLoss:
         
         # Create outputs for all heads but labels for only some
         outputs = {
-            "head_a": torch.randn(2, 8),
-            "head_c": torch.randn(2, 27),
+            "head_a": torch.randn(2, 12),  # Updated count
+            "head_c_a": torch.randn(2, 27),
+            "head_c_b": torch.randn(2, 20),
             "head_d": torch.randn(2, 3)
         }
         labels = {
             "head_a": torch.tensor([0, 1]),
-            # Missing head_c and head_d labels
+            # Missing head_c_a, head_c_b and head_d labels
         }
         
         losses = criterion(outputs, labels)
         
         # Should only compute loss for head_a
         assert "head_a" in losses
-        assert "head_c" not in losses
+        assert "head_c_a" not in losses
+        assert "head_c_b" not in losses
         assert "head_d" not in losses
         assert "total" in losses
 

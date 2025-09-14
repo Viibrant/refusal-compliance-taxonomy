@@ -15,7 +15,11 @@
         "prediction": "STYLE.PARTIAL_COMPLY",
         "probability": 0.10619726032018661
       },
-      "head_c": {
+      "head_d": {
+        "prediction": "prompt_harmful",
+        "probability": 0.3764435648918152
+      },
+      "head_c_a": {
         "predictions": [
           "weapons",
           "illicit_behavior",
@@ -73,9 +77,13 @@
           0.6115872859954834
         ]
       },
-      "head_d": {
-        "prediction": "prompt_harmful",
-        "probability": 0.3764435648918152
+      "head_c_b": {
+        "predictions": [
+          "other"
+        ],
+        "probabilities": [
+          0.481
+        ]
       }
     },
     "label_mappings": {
@@ -159,7 +167,11 @@
         "prediction": "STYLE.PARTIAL_COMPLY",
         "probability": 0.10659525543451309
       },
-      "head_c": {
+      "head_d": {
+        "prediction": "prompt_harmful",
+        "probability": 0.37589186429977417
+      },
+      "head_c_a": {
         "predictions": [
           "weapons",
           "illicit_behavior",
@@ -217,9 +229,13 @@
           0.6111977100372314
         ]
       },
-      "head_d": {
-        "prediction": "prompt_harmful",
-        "probability": 0.37589186429977417
+      "head_c_b": {
+        "predictions": [
+          "other"
+        ],
+        "probabilities": [
+          0.324
+        ]
       }
     },
     "label_mappings": {
@@ -303,7 +319,11 @@
         "prediction": "STYLE.PARTIAL_COMPLY",
         "probability": 0.10676860809326172
       },
-      "head_c": {
+      "head_d": {
+        "prediction": "prompt_harmful",
+        "probability": 0.374733567237854
+      },
+      "head_c_a": {
         "predictions": [
           "weapons",
           "illicit_behavior",
@@ -361,9 +381,13 @@
           0.612104594707489
         ]
       },
-      "head_d": {
-        "prediction": "prompt_harmful",
-        "probability": 0.374733567237854
+      "head_c_b": {
+        "predictions": [
+          "other"
+        ],
+        "probabilities": [
+          0.872
+        ]
       }
     },
     "label_mappings": {
@@ -447,7 +471,11 @@
         "prediction": "STYLE.PARTIAL_COMPLY",
         "probability": 0.10687360167503357
       },
-      "head_c": {
+      "head_d": {
+        "prediction": "prompt_harmful",
+        "probability": 0.373794823884964
+      },
+      "head_c_a": {
         "predictions": [
           "weapons",
           "illicit_behavior",
@@ -505,9 +533,13 @@
           0.61199551820755
         ]
       },
-      "head_d": {
-        "prediction": "prompt_harmful",
-        "probability": 0.373794823884964
+      "head_c_b": {
+        "predictions": [
+          "other"
+        ],
+        "probabilities": [
+          0.514
+        ]
       }
     },
     "label_mappings": {
@@ -591,7 +623,11 @@
         "prediction": "STYLE.PARTIAL_COMPLY",
         "probability": 0.10741817951202393
       },
-      "head_c": {
+      "head_d": {
+        "prediction": "prompt_harmful",
+        "probability": 0.37171387672424316
+      },
+      "head_c_a": {
         "predictions": [
           "weapons",
           "illicit_behavior",
@@ -649,9 +685,13 @@
           0.612699568271637
         ]
       },
-      "head_d": {
-        "prediction": "prompt_harmful",
-        "probability": 0.37171387672424316
+      "head_c_b": {
+        "predictions": [
+          "other"
+        ],
+        "probabilities": [
+          0.38
+        ]
       }
     },
     "label_mappings": {
@@ -735,7 +775,11 @@
         "prediction": "STYLE.PARTIAL_COMPLY",
         "probability": 0.10703756660223007
       },
-      "head_c": {
+      "head_d": {
+        "prediction": "prompt_harmful",
+        "probability": 0.37457820773124695
+      },
+      "head_c_a": {
         "predictions": [
           "weapons",
           "illicit_behavior",
@@ -793,9 +837,13 @@
           0.611675500869751
         ]
       },
-      "head_d": {
-        "prediction": "prompt_harmful",
-        "probability": 0.37457820773124695
+      "head_c_b": {
+        "predictions": [
+          "other"
+        ],
+        "probabilities": [
+          0.853
+        ]
       }
     },
     "label_mappings": {
@@ -879,7 +927,11 @@
         "prediction": "STYLE.PARTIAL_COMPLY",
         "probability": 0.1070840060710907
       },
-      "head_c": {
+      "head_d": {
+        "prediction": "prompt_harmful",
+        "probability": 0.37471818923950195
+      },
+      "head_c_a": {
         "predictions": [
           "weapons",
           "illicit_behavior",
@@ -937,9 +989,13 @@
           0.6118297576904297
         ]
       },
-      "head_d": {
-        "prediction": "prompt_harmful",
-        "probability": 0.37471818923950195
+      "head_c_b": {
+        "predictions": [
+          "other"
+        ],
+        "probabilities": [
+          0.706
+        ]
       }
     },
     "label_mappings": {
@@ -1023,7 +1079,11 @@
         "prediction": "STYLE.PARTIAL_COMPLY",
         "probability": 0.10654155164957047
       },
-      "head_c": {
+      "head_d": {
+        "prediction": "prompt_harmful",
+        "probability": 0.3750195801258087
+      },
+      "head_c_a": {
         "predictions": [
           "weapons",
           "illicit_behavior",
@@ -1081,9 +1141,13 @@
           0.6126635670661926
         ]
       },
-      "head_d": {
-        "prediction": "prompt_harmful",
-        "probability": 0.3750195801258087
+      "head_c_b": {
+        "predictions": [
+          "other"
+        ],
+        "probabilities": [
+          0.615
+        ]
       }
     },
     "label_mappings": {
@@ -1167,7 +1231,11 @@
         "prediction": "STYLE.PARTIAL_COMPLY",
         "probability": 0.10725966095924377
       },
-      "head_c": {
+      "head_d": {
+        "prediction": "prompt_harmful",
+        "probability": 0.37402859330177307
+      },
+      "head_c_a": {
         "predictions": [
           "weapons",
           "illicit_behavior",
@@ -1225,9 +1293,13 @@
           0.6119136810302734
         ]
       },
-      "head_d": {
-        "prediction": "prompt_harmful",
-        "probability": 0.37402859330177307
+      "head_c_b": {
+        "predictions": [
+          "other"
+        ],
+        "probabilities": [
+          0.508
+        ]
       }
     },
     "label_mappings": {
@@ -1311,7 +1383,11 @@
         "prediction": "STYLE.PARTIAL_COMPLY",
         "probability": 0.10653398931026459
       },
-      "head_c": {
+      "head_d": {
+        "prediction": "prompt_harmful",
+        "probability": 0.3744368553161621
+      },
+      "head_c_a": {
         "predictions": [
           "weapons",
           "illicit_behavior",
@@ -1369,9 +1445,13 @@
           0.6112630367279053
         ]
       },
-      "head_d": {
-        "prediction": "prompt_harmful",
-        "probability": 0.3744368553161621
+      "head_c_b": {
+        "predictions": [
+          "other"
+        ],
+        "probabilities": [
+          0.381
+        ]
       }
     },
     "label_mappings": {

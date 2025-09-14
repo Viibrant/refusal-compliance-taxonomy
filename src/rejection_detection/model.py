@@ -195,14 +195,23 @@ class MultiHeadClassifier(nn.Module):
     
     def _is_refusal_prediction(self, predictions: torch.Tensor) -> torch.Tensor:
         """Check if predictions are refusal types."""
-        # Assuming predictions are class indices
-        refusal_indices = [0, 1, 2]  # REFUSAL.DIRECT, REFUSAL.PARTIAL, REFUSAL.CAPABILITY
+        # Get refusal indices dynamically from taxonomy
+        from .taxonomies import OutcomeType
+        refusal_types = [OutcomeType.REFUSAL_DIRECT, OutcomeType.REFUSAL_SOFT, 
+                        OutcomeType.REFUSAL_PARTIAL, OutcomeType.REFUSAL_CAPABILITY, 
+                        OutcomeType.REFUSAL_OVER]
+        refusal_indices = [list(OutcomeType).index(t) for t in refusal_types]
         return torch.isin(predictions, torch.tensor(refusal_indices, device=predictions.device))
     
     def _is_compliance_prediction(self, predictions: torch.Tensor) -> torch.Tensor:
         """Check if predictions are compliance types."""
-        # Assuming predictions are class indices
-        compliance_indices = [3, 4, 5]  # COMPLY.BENIGN, COMPLY.UNSAFE, COMPLY.TRANSFORM
+        # Get compliance indices dynamically from taxonomy
+        from .taxonomies import OutcomeType
+        compliance_types = [OutcomeType.COMPLY_BENIGN, OutcomeType.COMPLY_UNSAFE, 
+                           OutcomeType.COMPLY_TRANSFORM, OutcomeType.COMPLY_CONDITIONAL,
+                           OutcomeType.COMPLY_EDUCATIONAL, OutcomeType.COMPLY_REDIRECTED,
+                           OutcomeType.COMPLY_PARTIAL_SAFE]
+        compliance_indices = [list(OutcomeType).index(t) for t in compliance_types]
         return torch.isin(predictions, torch.tensor(compliance_indices, device=predictions.device))
     
     def predict(
@@ -333,10 +342,21 @@ class MultiHeadLoss(nn.Module):
     
     def _is_refusal_prediction(self, predictions: torch.Tensor) -> torch.Tensor:
         """Check if predictions are refusal types."""
-        refusal_indices = [0, 1, 2]
+        # Get refusal indices dynamically from taxonomy
+        from .taxonomies import OutcomeType
+        refusal_types = [OutcomeType.REFUSAL_DIRECT, OutcomeType.REFUSAL_SOFT, 
+                        OutcomeType.REFUSAL_PARTIAL, OutcomeType.REFUSAL_CAPABILITY, 
+                        OutcomeType.REFUSAL_OVER]
+        refusal_indices = [list(OutcomeType).index(t) for t in refusal_types]
         return torch.isin(predictions, torch.tensor(refusal_indices, device=predictions.device))
     
     def _is_compliance_prediction(self, predictions: torch.Tensor) -> torch.Tensor:
         """Check if predictions are compliance types."""
-        compliance_indices = [3, 4, 5]
+        # Get compliance indices dynamically from taxonomy
+        from .taxonomies import OutcomeType
+        compliance_types = [OutcomeType.COMPLY_BENIGN, OutcomeType.COMPLY_UNSAFE, 
+                           OutcomeType.COMPLY_TRANSFORM, OutcomeType.COMPLY_CONDITIONAL,
+                           OutcomeType.COMPLY_EDUCATIONAL, OutcomeType.COMPLY_REDIRECTED,
+                           OutcomeType.COMPLY_PARTIAL_SAFE]
+        compliance_indices = [list(OutcomeType).index(t) for t in compliance_types]
         return torch.isin(predictions, torch.tensor(compliance_indices, device=predictions.device))

@@ -73,7 +73,7 @@ class RejectionDetectionDataset(Dataset):
                     raise ValueError(f"Sample {i} missing required field: {field}")
         
         # Check label fields
-        expected_label_fields = ["head_a", "head_c", "head_d"]
+        expected_label_fields = ["head_a", "head_c_a", "head_c_b", "head_d"]
         if self.include_style_heads:
             expected_label_fields.extend(["head_b_a", "head_b_b"])
         
@@ -151,20 +151,35 @@ class RejectionDetectionDataset(Dataset):
                 # Create dummy label for non-compliance cases
                 labels["head_b_b"] = torch.tensor(0, dtype=torch.long)
         
-        # Head C: Harm categories (multilabel)
-        if "head_c" in sample:
-            head_c_labels = sample["head_c"]
-            if isinstance(head_c_labels, list):
+        # Head C.A: Harm categories (multilabel)
+        if "head_c_a" in sample:
+            head_c_a_labels = sample["head_c_a"]
+            if isinstance(head_c_a_labels, list):
                 # Convert list of labels to binary vector
                 head_configs = get_head_configs()
-                label_vector = torch.zeros(len(head_configs["head_c"].class_names), dtype=torch.float)
-                for label in head_c_labels:
-                    if label in self.label_mappings["head_c"]:
-                        label_vector[self.label_mappings["head_c"][label]] = 1.0
-                labels["head_c"] = label_vector
+                label_vector = torch.zeros(len(head_configs["head_c_a"].class_names), dtype=torch.float)
+                for label in head_c_a_labels:
+                    if label in self.label_mappings["head_c_a"]:
+                        label_vector[self.label_mappings["head_c_a"][label]] = 1.0
+                labels["head_c_a"] = label_vector
             else:
                 # Assume it's already a binary vector
-                labels["head_c"] = torch.tensor(head_c_labels, dtype=torch.float)
+                labels["head_c_a"] = torch.tensor(head_c_a_labels, dtype=torch.float)
+        
+        # Head C.B: Harmless topic categories (multilabel)
+        if "head_c_b" in sample:
+            head_c_b_labels = sample["head_c_b"]
+            if isinstance(head_c_b_labels, list):
+                # Convert list of labels to binary vector
+                head_configs = get_head_configs()
+                label_vector = torch.zeros(len(head_configs["head_c_b"].class_names), dtype=torch.float)
+                for label in head_c_b_labels:
+                    if label in self.label_mappings["head_c_b"]:
+                        label_vector[self.label_mappings["head_c_b"][label]] = 1.0
+                labels["head_c_b"] = label_vector
+            else:
+                # Assume it's already a binary vector
+                labels["head_c_b"] = torch.tensor(head_c_b_labels, dtype=torch.float)
         
         # Head D: Boolean labels
         if "head_d" in sample:
@@ -346,8 +361,9 @@ def create_sample_data(num_samples: int = 100) -> List[Dict[str, Any]]:
     
     # Sample labels
     head_a_labels = [
-        "REFUSAL.DIRECT", "REFUSAL.PARTIAL", "REFUSAL.CAPABILITY",
-        "COMPLY.BENIGN", "COMPLY.UNSAFE", "COMPLY.TRANSFORM"
+        "REFUSAL.DIRECT", "REFUSAL.SOFT", "REFUSAL.PARTIAL", "REFUSAL.CAPABILITY", "REFUSAL.OVER",
+        "COMPLY.BENIGN", "COMPLY.UNSAFE", "COMPLY.TRANSFORM", "COMPLY.CONDITIONAL",
+        "COMPLY.EDUCATIONAL", "COMPLY.REDIRECTED", "COMPLY.PARTIAL_SAFE"
     ]
     
     head_b_a_labels = [
@@ -362,7 +378,7 @@ def create_sample_data(num_samples: int = 100) -> List[Dict[str, Any]]:
         "STYLE.TRANSFORM_ONLY", "STYLE.PARTIAL_COMPLY"
     ]
     
-    head_c_labels = [
+    head_c_a_labels = [
         "weapons", "illicit_behavior", "cybercrime", "fraud", "terrorism",
         "self_harm", "hate_harassment", "sexual_exploitative", "adult_sexual",
         "privacy_personal_data", "medical_advice", "legal_advice",
@@ -370,6 +386,15 @@ def create_sample_data(num_samples: int = 100) -> List[Dict[str, Any]]:
         "child_safety", "misinformation", "controlled_substances",
         "gambling", "political_persuasion", "biological_threats",
         "chemical_threats", "radiological_nuclear", "dangerous_activities", "other"
+    ]
+    
+    head_c_b_labels = [
+        "health_medicine", "education", "technology", "science_space",
+        "environment_climate", "politics_government", "law_legal",
+        "business_entrepreneurship", "finance_economy", "sports",
+        "travel_tourism", "food_cooking", "entertainment", "arts_literature",
+        "history", "psychology_self_development", "religion_philosophy",
+        "lifestyle_home", "relationships_dating", "other"
     ]
     
     for i in range(num_samples):
@@ -387,7 +412,11 @@ def create_sample_data(num_samples: int = 100) -> List[Dict[str, Any]]:
         
         # Random harm categories (multilabel)
         num_harm_categories = np.random.randint(0, 4)
-        head_c = np.random.choice(head_c_labels, size=num_harm_categories, replace=False).tolist()
+        head_c_a = np.random.choice(head_c_a_labels, size=num_harm_categories, replace=False).tolist()
+        
+        # Random harmless topic categories (multilabel)
+        num_harmless_categories = np.random.randint(0, 3)
+        head_c_b = np.random.choice(head_c_b_labels, size=num_harmless_categories, replace=False).tolist()
         
         # Random boolean labels
         head_d = {
@@ -400,7 +429,8 @@ def create_sample_data(num_samples: int = 100) -> List[Dict[str, Any]]:
             "prompt": f"Sample prompt {i}: How do I make a bomb?",
             "response": f"Sample response {i}: I cannot help with that request.",
             "head_a": head_a,
-            "head_c": head_c,
+            "head_c_a": head_c_a,
+            "head_c_b": head_c_b,
             "head_d": head_d,
         }
         

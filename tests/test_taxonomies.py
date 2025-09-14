@@ -6,6 +6,7 @@ from rejection_detection.taxonomies import (
     RefusalStyle,
     ComplianceStyle,
     HarmCategory,
+    HarmlessCategory,
     HeadConfig,
     get_head_configs,
     get_head_config,
@@ -14,7 +15,10 @@ from rejection_detection.taxonomies import (
     get_all_head_configs,
     is_refusal_label,
     is_compliance_label,
-    get_outcome_precedence
+    get_outcome_precedence,
+    get_outcome_definitions,
+    get_minimal_examples,
+    get_harmless_category_definitions
 )
 
 
@@ -32,11 +36,21 @@ class TestEnums:
         assert OutcomeType.COMPLY_TRANSFORM.value == "COMPLY.TRANSFORM"
         assert OutcomeType.COMPLY_UNSAFE.value == "COMPLY.UNSAFE"
         
+        # Test new compliance types
+        assert OutcomeType.COMPLY_CONDITIONAL.value == "COMPLY.CONDITIONAL"
+        assert OutcomeType.COMPLY_EDUCATIONAL.value == "COMPLY.EDUCATIONAL"
+        assert OutcomeType.COMPLY_REDIRECTED.value == "COMPLY.REDIRECTED"
+        assert OutcomeType.COMPLY_PARTIAL_SAFE.value == "COMPLY.PARTIAL_SAFE"
+        
         # Test all values
         all_values = [e.value for e in OutcomeType]
-        assert len(all_values) == 8
+        assert len(all_values) == 12  # Updated count
         assert "REFUSAL.DIRECT" in all_values
         assert "COMPLY.BENIGN" in all_values
+        assert "COMPLY.CONDITIONAL" in all_values
+        assert "COMPLY.EDUCATIONAL" in all_values
+        assert "COMPLY.REDIRECTED" in all_values
+        assert "COMPLY.PARTIAL_SAFE" in all_values
     
     def test_refusal_style_enum(self):
         """Test RefusalStyle enum values."""
@@ -103,6 +117,33 @@ class TestEnums:
         # Test all values
         all_values = [e.value for e in HarmCategory]
         assert len(all_values) == 27
+    
+    def test_harmless_category_enum(self):
+        """Test HarmlessCategory enum values."""
+        assert HarmlessCategory.HEALTH_MEDICINE.value == "health_medicine"
+        assert HarmlessCategory.EDUCATION.value == "education"
+        assert HarmlessCategory.TECHNOLOGY.value == "technology"
+        assert HarmlessCategory.SCIENCE_SPACE.value == "science_space"
+        assert HarmlessCategory.ENVIRONMENT_CLIMATE.value == "environment_climate"
+        assert HarmlessCategory.POLITICS_GOVERNMENT.value == "politics_government"
+        assert HarmlessCategory.LAW_LEGAL.value == "law_legal"
+        assert HarmlessCategory.BUSINESS_ENTREPRENEURSHIP.value == "business_entrepreneurship"
+        assert HarmlessCategory.FINANCE_ECONOMY.value == "finance_economy"
+        assert HarmlessCategory.SPORTS.value == "sports"
+        assert HarmlessCategory.TRAVEL_TOURISM.value == "travel_tourism"
+        assert HarmlessCategory.FOOD_COOKING.value == "food_cooking"
+        assert HarmlessCategory.ENTERTAINMENT.value == "entertainment"
+        assert HarmlessCategory.ARTS_LITERATURE.value == "arts_literature"
+        assert HarmlessCategory.HISTORY.value == "history"
+        assert HarmlessCategory.PSYCHOLOGY_SELF_DEVELOPMENT.value == "psychology_self_development"
+        assert HarmlessCategory.RELIGION_PHILOSOPHY.value == "religion_philosophy"
+        assert HarmlessCategory.LIFESTYLE_HOME.value == "lifestyle_home"
+        assert HarmlessCategory.RELATIONSHIPS_DATING.value == "relationships_dating"
+        assert HarmlessCategory.OTHER.value == "other"
+        
+        # Test all values
+        all_values = [e.value for e in HarmlessCategory]
+        assert len(all_values) == 20
 
 
 class TestHeadConfig:
@@ -144,16 +185,20 @@ class TestHeadConfigurations:
         configs = get_head_configs()
         
         # Check that all expected heads are present
-        expected_heads = ["head_a", "head_b_a", "head_b_b", "head_c", "head_d"]
+        expected_heads = ["head_a", "head_b_a", "head_b_b", "head_c_a", "head_c_b", "head_d"]
         for head in expected_heads:
             assert head in configs
         
         # Check head_a configuration
         head_a = configs["head_a"]
         assert head_a.head_type == "classification"
-        assert head_a.num_classes == 8
+        assert head_a.num_classes == 12  # Updated count with new compliance types
         assert "REFUSAL.DIRECT" in head_a.class_names
         assert "COMPLY.BENIGN" in head_a.class_names
+        assert "COMPLY.CONDITIONAL" in head_a.class_names
+        assert "COMPLY.EDUCATIONAL" in head_a.class_names
+        assert "COMPLY.REDIRECTED" in head_a.class_names
+        assert "COMPLY.PARTIAL_SAFE" in head_a.class_names
         
         # Check head_b_a configuration
         head_b_a = configs["head_b_a"]
@@ -167,12 +212,20 @@ class TestHeadConfigurations:
         assert head_b_b.num_classes == 11
         assert "STYLE.DIRECT_ANSWER" in head_b_b.class_names
         
-        # Check head_c configuration
-        head_c = configs["head_c"]
-        assert head_c.head_type == "multilabel"
-        assert head_c.num_classes == 27
-        assert "weapons" in head_c.class_names
-        assert "other" in head_c.class_names
+        # Check head_c_a configuration (harm categories)
+        head_c_a = configs["head_c_a"]
+        assert head_c_a.head_type == "multilabel"
+        assert head_c_a.num_classes == 27
+        assert "weapons" in head_c_a.class_names
+        assert "other" in head_c_a.class_names
+        
+        # Check head_c_b configuration (harmless categories)
+        head_c_b = configs["head_c_b"]
+        assert head_c_b.head_type == "multilabel"
+        assert head_c_b.num_classes == 20
+        assert "health_medicine" in head_c_b.class_names
+        assert "technology" in head_c_b.class_names
+        assert "other" in head_c_b.class_names
         
         # Check head_d configuration
         head_d = configs["head_d"]
@@ -187,11 +240,15 @@ class TestHeadConfigurations:
         # Test valid head names
         head_a = get_head_config("head_a")
         assert head_a.head_type == "classification"
-        assert head_a.num_classes == 8
+        assert head_a.num_classes == 12  # Updated count
         
-        head_c = get_head_config("head_c")
-        assert head_c.head_type == "multilabel"
-        assert head_c.num_classes == 27
+        head_c_a = get_head_config("head_c_a")
+        assert head_c_a.head_type == "multilabel"
+        assert head_c_a.num_classes == 27
+        
+        head_c_b = get_head_config("head_c_b")
+        assert head_c_b.head_type == "multilabel"
+        assert head_c_b.num_classes == 20
         
         head_d = get_head_config("head_d")
         assert head_d.head_type == "boolean"
@@ -208,7 +265,7 @@ class TestHeadConfigurations:
         
         # Should be the same as get_head_configs
         assert configs == get_head_configs()
-        assert len(configs) == 5
+        assert len(configs) == 6  # Updated count with head_c_a and head_c_b
 
 
 class TestLabelMappings:
@@ -223,12 +280,19 @@ class TestLabelMappings:
         assert "COMPLY.BENIGN" in mapping
         assert mapping["COMPLY.BENIGN"] == 5
         
-        # Test head_c mapping
-        mapping = get_label_to_id_mapping("head_c")
+        # Test head_c_a mapping
+        mapping = get_label_to_id_mapping("head_c_a")
         assert "weapons" in mapping
         assert mapping["weapons"] == 0
         assert "other" in mapping
         assert mapping["other"] == 26
+        
+        # Test head_c_b mapping
+        mapping = get_label_to_id_mapping("head_c_b")
+        assert "health_medicine" in mapping
+        assert mapping["health_medicine"] == 0
+        assert "other" in mapping
+        assert mapping["other"] == 19
         
         # Test head_d mapping
         mapping = get_label_to_id_mapping("head_d")
@@ -251,10 +315,15 @@ class TestLabelMappings:
         assert mapping[0] == "REFUSAL.DIRECT"
         assert mapping[5] == "COMPLY.BENIGN"
         
-        # Test head_c mapping
-        mapping = get_id_to_label_mapping("head_c")
+        # Test head_c_a mapping
+        mapping = get_id_to_label_mapping("head_c_a")
         assert mapping[0] == "weapons"
         assert mapping[26] == "other"
+        
+        # Test head_c_b mapping
+        mapping = get_id_to_label_mapping("head_c_b")
+        assert mapping[0] == "health_medicine"
+        assert mapping[19] == "other"
         
         # Test head_d mapping
         mapping = get_id_to_label_mapping("head_d")
@@ -295,6 +364,10 @@ class TestLabelClassification:
         assert is_compliance_label("COMPLY.BENIGN") is True
         assert is_compliance_label("COMPLY.TRANSFORM") is True
         assert is_compliance_label("COMPLY.UNSAFE") is True
+        assert is_compliance_label("COMPLY.CONDITIONAL") is True
+        assert is_compliance_label("COMPLY.EDUCATIONAL") is True
+        assert is_compliance_label("COMPLY.REDIRECTED") is True
+        assert is_compliance_label("COMPLY.PARTIAL_SAFE") is True
         
         # Test refusal labels
         assert is_compliance_label("REFUSAL.DIRECT") is False
@@ -390,11 +463,17 @@ class TestTaxonomyConsistency:
         for class_name in head_b_b_config.class_names:
             assert class_name in compliance_values
         
-        # Check head_c (HarmCategory)
-        head_c_config = configs["head_c"]
+        # Check head_c_a (HarmCategory)
+        head_c_a_config = configs["head_c_a"]
         harm_values = [e.value for e in HarmCategory]
-        for class_name in head_c_config.class_names:
+        for class_name in head_c_a_config.class_names:
             assert class_name in harm_values
+        
+        # Check head_c_b (HarmlessCategory)
+        head_c_b_config = configs["head_c_b"]
+        harmless_values = [e.value for e in HarmlessCategory]
+        for class_name in head_c_b_config.class_names:
+            assert class_name in harmless_values
 
 
 class TestTaxonomyEdgeCases:
@@ -425,3 +504,132 @@ class TestTaxonomyEdgeCases:
         
         with pytest.raises(AttributeError):
             is_compliance_label(None)
+
+
+class TestNewComplianceTypes:
+    """Test new compliance types functionality."""
+    
+    def test_new_compliance_types_in_precedence(self):
+        """Test that new compliance types are included in precedence rules."""
+        precedence = get_outcome_precedence()
+        
+        # Check that new compliance types are in precedence
+        assert OutcomeType.COMPLY_CONDITIONAL in precedence
+        assert OutcomeType.COMPLY_EDUCATIONAL in precedence
+        assert OutcomeType.COMPLY_REDIRECTED in precedence
+        assert OutcomeType.COMPLY_PARTIAL_SAFE in precedence
+    
+    def test_new_compliance_types_definitions(self):
+        """Test that new compliance types have definitions."""
+        definitions = get_outcome_definitions()
+        
+        # Check that new compliance types have definitions (using enum objects as keys)
+        assert OutcomeType.COMPLY_CONDITIONAL in definitions
+        assert OutcomeType.COMPLY_EDUCATIONAL in definitions
+        assert OutcomeType.COMPLY_REDIRECTED in definitions
+        assert OutcomeType.COMPLY_PARTIAL_SAFE in definitions
+        
+        # Check that definitions are not empty
+        assert len(definitions[OutcomeType.COMPLY_CONDITIONAL]) > 0
+        assert len(definitions[OutcomeType.COMPLY_EDUCATIONAL]) > 0
+        assert len(definitions[OutcomeType.COMPLY_REDIRECTED]) > 0
+        assert len(definitions[OutcomeType.COMPLY_PARTIAL_SAFE]) > 0
+    
+    def test_new_compliance_types_examples(self):
+        """Test that new compliance types have minimal examples."""
+        examples = get_minimal_examples()
+        
+        # Check that new compliance types have examples (using string keys)
+        assert "COMPLY.CONDITIONAL" in examples
+        assert "COMPLY.EDUCATIONAL" in examples
+        assert "COMPLY.REDIRECTED" in examples
+        assert "COMPLY.PARTIAL_SAFE" in examples
+        
+        # Check that examples are not empty
+        assert len(examples["COMPLY.CONDITIONAL"]) > 0
+        assert len(examples["COMPLY.EDUCATIONAL"]) > 0
+        assert len(examples["COMPLY.REDIRECTED"]) > 0
+        assert len(examples["COMPLY.PARTIAL_SAFE"]) > 0
+
+
+class TestHarmlessCategories:
+    """Test harmless categories functionality."""
+    
+    def test_harmless_category_definitions(self):
+        """Test that harmless categories have definitions."""
+        definitions = get_harmless_category_definitions()
+        
+        # Check that all harmless categories have definitions (using enum objects as keys)
+        for category in HarmlessCategory:
+            assert category in definitions
+            assert len(definitions[category]) > 0
+    
+    def test_harmless_category_comprehensive_coverage(self):
+        """Test that harmless categories cover major topic domains."""
+        categories = [cat.value for cat in HarmlessCategory]
+        
+        # Check for major topic domains
+        major_domains = [
+            "health_medicine", "education", "technology", "science_space",
+            "politics_government", "business_entrepreneurship", "finance_economy",
+            "entertainment", "sports", "travel_tourism", "food_cooking"
+        ]
+        
+        for domain in major_domains:
+            assert domain in categories, f"Major domain {domain} not covered"
+    
+    def test_harmless_category_no_overlap_with_harm(self):
+        """Test that harmless categories don't overlap with harm categories (except 'other')."""
+        harm_categories = [cat.value for cat in HarmCategory]
+        harmless_categories = [cat.value for cat in HarmlessCategory]
+        
+        # Check for no overlap (except 'other' which is expected to be in both)
+        overlap = set(harm_categories) & set(harmless_categories)
+        assert overlap == {"other"}, f"Unexpected overlap found between harm and harmless categories: {overlap}"
+
+
+class TestUpdatedTaxonomyStructure:
+    """Test the updated taxonomy structure with head_c_a and head_c_b."""
+    
+    def test_head_c_a_contains_harm_categories(self):
+        """Test that head_c_a contains all harm categories."""
+        config = get_head_config("head_c_a")
+        harm_categories = [cat.value for cat in HarmCategory]
+        
+        for category in harm_categories:
+            assert category in config.class_names
+    
+    def test_head_c_b_contains_harmless_categories(self):
+        """Test that head_c_b contains all harmless categories."""
+        config = get_head_config("head_c_b")
+        harmless_categories = [cat.value for cat in HarmlessCategory]
+        
+        for category in harmless_categories:
+            assert category in config.class_names
+    
+    def test_head_c_a_and_c_b_are_separate(self):
+        """Test that head_c_a and head_c_b are separate (except for 'other' category)."""
+        config_a = get_head_config("head_c_a")
+        config_b = get_head_config("head_c_b")
+        
+        # Only 'other' should overlap between the two heads
+        overlap = set(config_a.class_names) & set(config_b.class_names)
+        assert overlap == {"other"}, f"Unexpected overlap found between head_c_a and head_c_b: {overlap}"
+    
+    def test_head_c_a_and_c_b_both_multilabel(self):
+        """Test that both head_c_a and head_c_b are multilabel."""
+        config_a = get_head_config("head_c_a")
+        config_b = get_head_config("head_c_b")
+        
+        assert config_a.head_type == "multilabel"
+        assert config_b.head_type == "multilabel"
+    
+    def test_head_c_a_and_c_b_correct_sizes(self):
+        """Test that head_c_a and head_c_b have correct sizes."""
+        config_a = get_head_config("head_c_a")
+        config_b = get_head_config("head_c_b")
+        
+        assert config_a.num_classes == len(HarmCategory)
+        assert config_b.num_classes == len(HarmlessCategory)
+        assert config_a.num_classes == 27
+        assert config_b.num_classes == 20

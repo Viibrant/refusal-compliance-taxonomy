@@ -31,7 +31,8 @@ class TestDataLoading:
                 "head_a": "REFUSAL.DIRECT",
                 "head_b_a": "STYLE.DIRECT",
                 "head_b_b": None,
-                "head_c": ["weapons"],
+                "head_c_a": ["weapons"],
+                "head_c_b": ["technology"],
                 "head_d": {"prompt_harmful": True, "response_harmful": False, "response_refusal": True}
             },
             {
@@ -40,7 +41,8 @@ class TestDataLoading:
                 "head_a": "REFUSAL.CAPABILITY",
                 "head_b_a": "STYLE.CLARIFY",
                 "head_b_b": None,
-                "head_c": [],
+                "head_c_a": [],
+                "head_c_b": ["technology"],
                 "head_d": {"prompt_harmful": False, "response_harmful": False, "response_refusal": True}
             }
         ]
@@ -67,7 +69,8 @@ class TestDataLoading:
         assert "prompt" in data[0]
         assert "response" in data[0]
         assert "head_a" in data[0]
-        assert "head_c" in data[0]
+        assert "head_c_a" in data[0]
+        assert "head_c_b" in data[0]
         assert "head_d" in data[0]
     
     def test_load_data_nonexistent_file(self):
@@ -107,7 +110,8 @@ class TestDataLoading:
                 "prompt": "Test prompt",
                 "response": "Test response",
                 "head_a": "REFUSAL.DIRECT",
-                "head_c": ["weapons"],
+                "head_c_a": ["weapons"],
+                "head_c_b": ["technology"],
                 "head_d": {
                     "prompt_harmful": np.bool_(True),
                     "response_harmful": np.bool_(False),
@@ -192,7 +196,8 @@ class TestSampleDataCreation:
         assert "prompt" in data[0]
         assert "response" in data[0]
         assert "head_a" in data[0]
-        assert "head_c" in data[0]
+        assert "head_c_a" in data[0]
+        assert "head_c_b" in data[0]
         assert "head_d" in data[0]
     
     def test_create_sample_data_custom_size(self):
@@ -210,15 +215,17 @@ class TestSampleDataCreation:
             assert "prompt" in item
             assert "response" in item
             assert "head_a" in item
-            assert "head_c" in item
+            assert "head_c_a" in item
+            assert "head_c_b" in item
             assert "head_d" in item
             
             # Check head_a is valid
             head_a_config = get_head_config("head_a")
             assert item["head_a"] in head_a_config.class_names
             
-            # Check head_c is a list
-            assert isinstance(item["head_c"], list)
+            # Check head_c_a and head_c_b are lists
+            assert isinstance(item["head_c_a"], list)
+            assert isinstance(item["head_c_b"], list)
             
             # Check head_d is a dict with correct keys
             assert isinstance(item["head_d"], dict)
@@ -245,7 +252,8 @@ class TestRejectionDetectionDataset:
                 "head_a": "REFUSAL.DIRECT",
                 "head_b_a": "STYLE.DIRECT",
                 "head_b_b": None,
-                "head_c": ["weapons"],
+                "head_c_a": ["weapons"],
+                "head_c_b": ["technology"],
                 "head_d": {"prompt_harmful": True, "response_harmful": False, "response_refusal": True}
             },
             {
@@ -254,7 +262,8 @@ class TestRejectionDetectionDataset:
                 "head_a": "REFUSAL.CAPABILITY",
                 "head_b_a": "STYLE.CLARIFY",
                 "head_b_b": None,
-                "head_c": [],
+                "head_c_a": [],
+                "head_c_b": ["technology"],
                 "head_d": {"prompt_harmful": False, "response_harmful": False, "response_refusal": True}
             }
         ]
@@ -360,7 +369,8 @@ class TestDataValidation:
                 "prompt": "Test prompt",
                 "response": "Test response",
                 "head_a": "REFUSAL.DIRECT",
-                "head_c": ["weapons"],
+                "head_c_a": ["weapons"],
+                "head_c_b": ["technology"],
                 "head_d": {
                     "prompt_harmful": np.bool_(True),
                     "response_harmful": np.bool_(False),

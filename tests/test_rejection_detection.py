@@ -45,26 +45,34 @@ def test_taxonomies():
     """Test taxonomy definitions."""
     # Test head configurations
     head_configs = get_head_configs()
-    assert len(head_configs) == 5
+    assert len(head_configs) == 6
     assert "head_a" in head_configs
     assert "head_b_a" in head_configs
     assert "head_b_b" in head_configs
-    assert "head_c" in head_configs
+    assert "head_c_a" in head_configs
+    assert "head_c_b" in head_configs
     assert "head_d" in head_configs
     
     # Test head A configuration
     head_a_config = get_head_config("head_a")
-    assert head_a_config.num_classes == 8  # Updated to new taxonomy
+    assert head_a_config.num_classes == 12  # Updated to new taxonomy
     assert head_a_config.head_type == "classification"
     assert "REFUSAL.DIRECT" in head_a_config.class_names
     assert "COMPLY.BENIGN" in head_a_config.class_names
     
-    # Test head C configuration (multilabel)
-    head_c_config = get_head_config("head_c")
-    assert head_c_config.num_classes == 27  # Updated to new taxonomy
-    assert head_c_config.head_type == "multilabel"
-    assert "weapons" in head_c_config.class_names
-    assert "other" in head_c_config.class_names
+    # Test head C.A configuration (multilabel)
+    head_c_a_config = get_head_config("head_c_a")
+    assert head_c_a_config.num_classes == 27
+    assert head_c_a_config.head_type == "multilabel"
+    assert "weapons" in head_c_a_config.class_names
+    assert "other" in head_c_a_config.class_names
+    
+    # Test head C.B configuration (multilabel)
+    head_c_b_config = get_head_config("head_c_b")
+    assert head_c_b_config.num_classes == 20
+    assert head_c_b_config.head_type == "multilabel"
+    assert "health_medicine" in head_c_b_config.class_names
+    assert "other" in head_c_b_config.class_names
 
 
 def test_label_mappings():
@@ -84,7 +92,7 @@ def test_multi_head_classifier():
     )
     
     assert model is not None
-    assert len(model.heads) == 5
+    assert len(model.heads) == 6
     
     # Test forward pass with dummy data
     batch_size = 2
@@ -142,15 +150,17 @@ def test_sample_data_creation():
     assert "prompt" in sample
     assert "response" in sample
     assert "head_a" in sample
-    assert "head_c" in sample
+    assert "head_c_a" in sample
+    assert "head_c_b" in sample
     assert "head_d" in sample
     
     # Check head_a values
     head_a_config = get_head_config("head_a")
     assert sample["head_a"] in head_a_config.class_names
     
-    # Check head_c is a list
-    assert isinstance(sample["head_c"], list)
+    # Check head_c_a and head_c_b are lists
+    assert isinstance(sample["head_c_a"], list)
+    assert isinstance(sample["head_c_b"], list)
     
     # Check head_d is a dict
     assert isinstance(sample["head_d"], dict)

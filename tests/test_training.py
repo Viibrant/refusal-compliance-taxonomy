@@ -68,7 +68,8 @@ class TestMultiHeadTrainer:
                 "head_a": "REFUSAL.DIRECT",
                 "head_b_a": "STYLE.DIRECT",
                 "head_b_b": None,
-                "head_c": ["weapons"],
+                "head_c_a": ["weapons"],
+                "head_c_b": ["technology"],
                 "head_d": {"prompt_harmful": True, "response_harmful": False, "response_refusal": True}
             },
             {
@@ -77,7 +78,8 @@ class TestMultiHeadTrainer:
                 "head_a": "REFUSAL.CAPABILITY",
                 "head_b_a": None,
                 "head_b_b": None,
-                "head_c": [],
+                "head_c_a": [],
+                "head_c_b": ["technology"],
                 "head_d": {"prompt_harmful": False, "response_harmful": False, "response_refusal": True}
             }
         ]
@@ -100,7 +102,8 @@ class TestMultiHeadTrainer:
                     "head_a": torch.tensor([0, 1]),
                     "head_b_a": torch.tensor([0, 0]),
                     "head_b_b": torch.tensor([0, 0]),
-                    "head_c": torch.tensor([[1, 0, 0], [0, 0, 0]]),
+                    "head_c_a": torch.tensor([[1, 0, 0], [0, 0, 0]]),
+                    "head_c_b": torch.tensor([[1, 0, 0], [0, 1, 0]]),
                     "head_d": torch.tensor([[1, 0, 1], [0, 0, 1]])
                 }
             }
@@ -281,7 +284,8 @@ class TestMultiHeadTrainer:
                 "eval_head_a_loss": 0.3,
                 "eval_head_b_a_loss": 0.2,
                 "eval_head_b_b_loss": 0.2,
-                "eval_head_c_loss": 0.2,
+                "eval_head_c_a_loss": 0.2,
+                "eval_head_c_b_loss": 0.2,
                 "eval_head_d_loss": 0.1
             }
             metrics = trainer.evaluate(mock_dataloader, 0)
@@ -314,12 +318,14 @@ class TestMultiHeadTrainer:
         # Create mock predictions and labels with more samples to avoid ROC AUC warnings
         predictions = {
             "head_a": torch.tensor([0, 1, 0, 1]),  # Discrete predictions for classification
-            "head_c": torch.tensor([[0.9, 0.1, 0.2], [0.1, 0.8, 0.3], [0.2, 0.7, 0.1], [0.8, 0.2, 0.9]]),  # Continuous for multilabel
+            "head_c_a": torch.tensor([[0.9, 0.1, 0.2], [0.1, 0.8, 0.3], [0.2, 0.7, 0.1], [0.8, 0.2, 0.9]]),  # Continuous for multilabel
+            "head_c_b": torch.tensor([[0.9, 0.1, 0.2], [0.1, 0.8, 0.3], [0.2, 0.7, 0.1], [0.8, 0.2, 0.9]]),  # Continuous for multilabel
             "head_d": torch.tensor([[0.9, 0.1, 0.8], [0.2, 0.7, 0.1], [0.1, 0.9, 0.2], [0.8, 0.1, 0.9]])   # Continuous for multilabel
         }
         labels = {
             "head_a": torch.tensor([0, 1, 0, 1]),
-            "head_c": torch.tensor([[1, 0, 0], [0, 1, 0], [0, 1, 1], [1, 0, 1]]).float(),
+            "head_c_a": torch.tensor([[1, 0, 0], [0, 1, 0], [0, 1, 1], [1, 0, 1]]).float(),
+            "head_c_b": torch.tensor([[1, 0, 0], [0, 1, 0], [0, 1, 1], [1, 0, 1]]).float(),
             "head_d": torch.tensor([[1, 0, 1], [0, 1, 0], [0, 1, 0], [1, 0, 1]]).float()
         }
         
@@ -328,7 +334,8 @@ class TestMultiHeadTrainer:
         
         # Check that metrics are computed for each head
         assert "head_a_accuracy" in metrics
-        assert "head_c_precision" in metrics
+        assert "head_c_a_precision" in metrics
+        assert "head_c_b_precision" in metrics
         assert "head_d_precision" in metrics
     
     @patch('rejection_detection.training.Accelerator')
@@ -507,3 +514,194 @@ class TestTrainingIntegration:
         
         # Check that train was called
         assert trainer.train.called
+
+
+class TestMetricCalculationFixes:
+    """Test the improved metric calculation with class diversity checks."""
+    
+    @pytest.fixture
+    def temp_output_dir(self):
+        """Create temporary output directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+    
+    @patch('rejection_detection.training.Accelerator')
+    @patch('rejection_detection.training.AutoTokenizer.from_pretrained')
+    @patch('rejection_detection.training.MultiHeadClassifier')
+    def test_metrics_with_single_class_labels(self, mock_model_class, mock_tokenizer, mock_accelerator, temp_output_dir):
+        """Test metrics calculation when labels have only one class (should not cause warnings)."""
+        # Mock the model and tokenizer
+        mock_model = Mock()
+        mock_model.named_parameters.return_value = [("param1", torch.tensor([1.0])), ("param2", torch.tensor([2.0]))]
+        mock_model_class.return_value = mock_model
+        mock_tokenizer.return_value = Mock()
+        
+        # Mock accelerator
+        mock_accelerator.return_value.is_local_main_process = True
+        mock_accelerator.return_value.prepare = Mock(return_value=(mock_model, Mock()))
+        
+        trainer = MultiHeadTrainer(mock_model, mock_tokenizer.return_value, mock_accelerator.return_value, str(temp_output_dir))
+        
+        # Create predictions and labels with single class (should trigger the fix)
+        predictions = {
+            "head_a": torch.tensor([0, 0, 0, 0]),  # All same class
+            "head_c_a": torch.tensor([[0.9, 0.1, 0.2], [0.8, 0.2, 0.1], [0.7, 0.3, 0.2], [0.6, 0.4, 0.1]]),  # Continuous for multilabel
+            "head_c_b": torch.tensor([[0.9, 0.1, 0.2], [0.8, 0.2, 0.1], [0.7, 0.3, 0.2], [0.6, 0.4, 0.1]]),  # Continuous for multilabel
+            "head_d": torch.tensor([[0.9, 0.1, 0.8], [0.8, 0.2, 0.7], [0.7, 0.3, 0.6], [0.6, 0.4, 0.5]])   # Continuous for multilabel
+        }
+        labels = {
+            "head_a": torch.tensor([0, 0, 0, 0]),  # All same class - should not cause warnings
+            "head_c_a": torch.tensor([[1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0]]).float(),  # All same labels
+            "head_c_b": torch.tensor([[1, 0, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0]]).float(),  # All same labels
+            "head_d": torch.tensor([[1, 0, 1], [1, 0, 1], [1, 0, 1], [1, 0, 1]]).float()   # All same labels
+        }
+        
+        # This should not raise any warnings or errors
+        metrics = trainer._compute_metrics(predictions, labels)
+        
+        # Check that metrics are computed without errors
+        assert "head_a_accuracy" in metrics
+        assert "head_c_a_precision" in metrics
+        assert "head_c_b_precision" in metrics
+        assert "head_d_precision" in metrics
+        
+        # AUC should be 0.0 when there's insufficient class diversity
+        assert metrics["head_c_a_auc"] == 0.0
+        assert metrics["head_c_b_auc"] == 0.0
+        assert metrics["head_d_auc"] == 0.0
+    
+    @patch('rejection_detection.training.Accelerator')
+    @patch('rejection_detection.training.AutoTokenizer.from_pretrained')
+    @patch('rejection_detection.training.MultiHeadClassifier')
+    def test_metrics_with_mixed_class_diversity(self, mock_model_class, mock_tokenizer, mock_accelerator, temp_output_dir):
+        """Test metrics calculation with mixed class diversity across labels."""
+        # Mock the model and tokenizer
+        mock_model = Mock()
+        mock_model.named_parameters.return_value = [("param1", torch.tensor([1.0])), ("param2", torch.tensor([2.0]))]
+        mock_model_class.return_value = mock_model
+        mock_tokenizer.return_value = Mock()
+        
+        # Mock accelerator
+        mock_accelerator.return_value.is_local_main_process = True
+        mock_accelerator.return_value.prepare = Mock(return_value=(mock_model, Mock()))
+        
+        trainer = MultiHeadTrainer(mock_model, mock_tokenizer.return_value, mock_accelerator.return_value, str(temp_output_dir))
+        
+        # Create predictions and labels with mixed diversity
+        predictions = {
+            "head_c_a": torch.tensor([
+                [0.9, 0.1, 0.2],  # Label 0 active
+                [0.1, 0.8, 0.3],  # Label 1 active
+                [0.2, 0.7, 0.1],  # Label 1 active
+                [0.8, 0.2, 0.9]   # Labels 0 and 2 active
+            ]),
+            "head_c_b": torch.tensor([
+                [0.9, 0.1, 0.2],  # Label 0 active
+                [0.1, 0.8, 0.3],  # Label 1 active
+                [0.2, 0.7, 0.1],  # Label 1 active
+                [0.8, 0.2, 0.9]   # Labels 0 and 2 active
+            ])
+        }
+        labels = {
+            "head_c_a": torch.tensor([
+                [1, 0, 0],  # Label 0 active
+                [0, 1, 0],  # Label 1 active
+                [0, 1, 0],  # Label 1 active
+                [1, 0, 1]   # Labels 0 and 2 active
+            ]).float(),
+            "head_c_b": torch.tensor([
+                [1, 0, 0],  # Label 0 active
+                [0, 1, 0],  # Label 1 active
+                [0, 1, 0],  # Label 1 active
+                [1, 0, 1]   # Labels 0 and 2 active
+            ]).float()
+        }
+        
+        # This should compute AUC properly since we have class diversity
+        metrics = trainer._compute_metrics(predictions, labels)
+        
+        # Check that metrics are computed
+        assert "head_c_a_precision" in metrics
+        assert "head_c_b_precision" in metrics
+        assert "head_c_a_auc" in metrics
+        assert "head_c_b_auc" in metrics
+        
+        # AUC should be computed (not 0.0) since we have class diversity
+        assert metrics["head_c_a_auc"] >= 0.0
+        assert metrics["head_c_b_auc"] >= 0.0
+    
+    @patch('rejection_detection.training.Accelerator')
+    @patch('rejection_detection.training.AutoTokenizer.from_pretrained')
+    @patch('rejection_detection.training.MultiHeadClassifier')
+    def test_metrics_with_single_label_multilabel(self, mock_model_class, mock_tokenizer, mock_accelerator, temp_output_dir):
+        """Test metrics calculation for single-label multilabel case."""
+        # Mock the model and tokenizer
+        mock_model = Mock()
+        mock_model.named_parameters.return_value = [("param1", torch.tensor([1.0])), ("param2", torch.tensor([2.0]))]
+        mock_model_class.return_value = mock_model
+        mock_tokenizer.return_value = Mock()
+        
+        # Mock accelerator
+        mock_accelerator.return_value.is_local_main_process = True
+        mock_accelerator.return_value.prepare = Mock(return_value=(mock_model, Mock()))
+        
+        trainer = MultiHeadTrainer(mock_model, mock_tokenizer.return_value, mock_accelerator.return_value, str(temp_output_dir))
+        
+        # Create predictions and labels for single-label multilabel case
+        predictions = {
+            "head_c_a": torch.tensor([[0.9, 0.1, 0.2], [0.8, 0.2, 0.1]]),  # 2 samples, 3 labels
+            "head_c_b": torch.tensor([[0.9, 0.1, 0.2], [0.8, 0.2, 0.1]])   # 2 samples, 3 labels
+        }
+        labels = {
+            "head_c_a": torch.tensor([[1, 0, 0], [0, 1, 0]]).float(),  # Different classes
+            "head_c_b": torch.tensor([[1, 0, 0], [0, 1, 0]]).float()   # Different classes
+        }
+        
+        # This should compute AUC properly
+        metrics = trainer._compute_metrics(predictions, labels)
+        
+        # Check that metrics are computed
+        assert "head_c_a_precision" in metrics
+        assert "head_c_b_precision" in metrics
+        assert "head_c_a_auc" in metrics
+        assert "head_c_b_auc" in metrics
+        
+        # AUC should be computed since we have class diversity
+        assert metrics["head_c_a_auc"] >= 0.0
+        assert metrics["head_c_b_auc"] >= 0.0
+    
+    @patch('rejection_detection.training.Accelerator')
+    @patch('rejection_detection.training.AutoTokenizer.from_pretrained')
+    @patch('rejection_detection.training.MultiHeadClassifier')
+    def test_metrics_error_handling(self, mock_model_class, mock_tokenizer, mock_accelerator, temp_output_dir):
+        """Test that metric calculation handles errors gracefully."""
+        # Mock the model and tokenizer
+        mock_model = Mock()
+        mock_model.named_parameters.return_value = [("param1", torch.tensor([1.0])), ("param2", torch.tensor([2.0]))]
+        mock_model_class.return_value = mock_model
+        mock_tokenizer.return_value = Mock()
+        
+        # Mock accelerator
+        mock_accelerator.return_value.is_local_main_process = True
+        mock_accelerator.return_value.prepare = Mock(return_value=(mock_model, Mock()))
+        
+        trainer = MultiHeadTrainer(mock_model, mock_tokenizer.return_value, mock_accelerator.return_value, str(temp_output_dir))
+        
+        # Create invalid predictions and labels that might cause errors
+        predictions = {
+            "head_c_a": torch.tensor([[0.9, 0.1], [0.8, 0.2]]),  # 2 samples, 2 labels
+            "head_c_b": torch.tensor([[0.9, 0.1], [0.8, 0.2]])   # 2 samples, 2 labels
+        }
+        labels = {
+            "head_c_a": torch.tensor([[1, 0], [0, 1]]).float(),  # Valid labels
+            "head_c_b": torch.tensor([[1, 0], [0, 1]]).float()   # Valid labels
+        }
+        
+        # This should not raise any errors
+        metrics = trainer._compute_metrics(predictions, labels)
+        
+        # Check that metrics are computed
+        assert "head_c_a_precision" in metrics
+        assert "head_c_b_precision" in metrics
+        assert "head_c_a_auc" in metrics
+        assert "head_c_b_auc" in metrics
